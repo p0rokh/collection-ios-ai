@@ -1,26 +1,26 @@
 import Foundation
 import CoreGraphics
 
-/// Pure physics integrator for a single `Particle` step.
+/// Чистый физический интегратор для одного шага `Particle`.
 ///
-/// `ParticlePhysics` is an internal Domain utility; it is not part of the public
-/// API. The rendering backend calls `step(_:dt:configuration:)` once per display
-/// frame for every live particle. Keeping physics in the Domain layer means an
-/// alternative renderer (e.g. Metal) inherits the same motion model without
-/// touching the Rendering layer.
+/// `ParticlePhysics` — внутренняя утилита Domain-слоя; она не является частью
+/// публичного API. Rendering-бэкенд вызывает `step(_:dt:configuration:)` один
+/// раз за кадр дисплея для каждой живой частицы. Изоляция физики в Domain-слое
+/// позволяет альтернативному renderer (например, на Metal) использовать ту же
+/// модель движения без изменений в Rendering-слое.
 enum ParticlePhysics {
 
-    /// Advances `particle` by one time step.
+    /// Продвигает `particle` на один временной шаг.
     ///
-    /// The integrator applies sinusoidal wobble forces, gravity, velocity damping,
-    /// positional integration, rotation, and alpha decay — in that order.
+    /// Интегратор применяет синусоидальные силы wobble, гравитацию, затухание
+    /// скорости, интегрирование позиции, вращение и затухание alpha — в таком порядке.
     ///
     /// - Parameters:
-    ///   - particle: The particle to mutate in place.
-    ///   - dt: Elapsed time since the last frame, in seconds. Should be clamped by
-    ///     the caller to avoid large jumps after backgrounding.
-    ///   - configuration: Physics constants (`gravity`, `damping`, etc.) sourced
-    ///     from the active `ExplosionConfiguration`.
+    ///   - particle: Частица, изменяемая на месте.
+    ///   - dt: Прошедшее время с последнего кадра, в секундах. Должно быть ограничено
+    ///     вызывающим кодом, чтобы избежать больших скачков после фонового режима.
+    ///   - configuration: Физические константы (`gravity`, `damping` и др.),
+    ///     взятые из активной `ExplosionConfiguration`.
     static func step(_ particle: inout Particle, dt: CGFloat, configuration: ExplosionConfiguration) {
         particle.age += dt
 

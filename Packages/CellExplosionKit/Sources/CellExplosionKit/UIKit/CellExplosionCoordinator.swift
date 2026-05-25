@@ -1,17 +1,17 @@
 import UIKit
 import QuartzCore
 
-/// The central orchestrator of the cell explosion and height-collapse effect.
+/// Центральный оркестратор эффекта взрыва ячейки и коллапса высоты.
 ///
-/// `CellExplosionCoordinator` wires together the layout controller, snapshot
-/// provider, and renderer into a single object that the consumer creates once and
-/// keeps alive for the lifetime of the collection view. It acts as the
-/// `CellCollapseLayoutControllerDelegate`, intercepts deletion batches, captures
-/// cell snapshots, starts `CollapseTracker` animations, and drives a
-/// `CADisplayLink` loop that bursts particles the moment a cell's visible height
-/// drops below `configuration.burstThreshold`.
+/// `CellExplosionCoordinator` связывает layout-контроллер, snapshot-провайдер
+/// и renderer в один объект. Потребитель создаёт его один раз и держит живым
+/// на всё время жизни collection view. Координатор выступает как
+/// `CellCollapseLayoutControllerDelegate`, перехватывает пакеты удалений, захватывает
+/// snapshot ячеек, запускает анимации `CollapseTracker` и управляет циклом
+/// `CADisplayLink`, взрывая частицы в момент, когда видимая высота ячейки
+/// опускается ниже `configuration.burstThreshold`.
 ///
-/// **Typical setup:**
+/// **Типовая настройка:**
 /// ```swift
 /// let renderer = SpriteKitParticleRenderer(configuration: .default)
 /// renderer.view.frame = view.bounds
@@ -25,49 +25,48 @@ import QuartzCore
 /// )
 /// ```
 ///
-/// After construction, standard `collectionView.deleteItems(at:)` calls trigger
-/// the effect automatically. No changes to the deletion code are required.
+/// После создания стандартные вызовы `collectionView.deleteItems(at:)` автоматически
+/// запускают эффект. Изменений в коде удаления не требуется.
 ///
-/// **Disabling the effect:**
-/// Set `isEnabled = false` to make the coordinator a complete no-op. Deletions
-/// proceed with the standard `UICollectionView` animation, and no snapshots are
-/// captured.
+/// **Отключение эффекта:**
+/// Установите `isEnabled = false`, чтобы координатор стал полным no-op. Удаления
+/// будут выполняться со стандартной анимацией `UICollectionView`, без захвата snapshot.
 ///
-/// **Selective opt-out:**
-/// Set `shouldExplode` to return `false` for specific index paths. Those paths
-/// use the standard deletion animation while the rest of the batch still bursts.
-/// For example:
+/// **Выборочное отключение:**
+/// Установите `shouldExplode`, возвращающий `false` для конкретных index path.
+/// Эти path используют стандартную анимацию удаления, остальные в пакете
+/// всё равно взрываются. Например:
 /// ```swift
 /// coordinator.shouldExplode = { indexPath in indexPath.item != pinnedItemIndex }
 /// ```
 ///
-/// **Runtime configuration:**
-/// Assigning a new `ExplosionConfiguration` to `configuration` takes effect for
-/// the next deletion batch. In-flight animations always finish with the
-/// configuration that was active when they started.
+/// **Конфигурация во время выполнения:**
+/// Присвоение нового `ExplosionConfiguration` в `configuration` вступает в силу
+/// для следующего пакета удалений. Анимации в процессе всегда завершаются с той
+/// конфигурацией, которая была активна в момент их запуска.
 public final class CellExplosionCoordinator {
 
-    /// When `false`, the coordinator is a complete no-op: the delegate method
-    /// returns immediately, `markCollapsing` is never called, and deletions
-    /// animate with the standard `UICollectionView` transition.
+    /// Когда `false`, координатор является полным no-op: метод delegate возвращается
+    /// немедленно, `markCollapsing` не вызывается, а удаления анимируются
+    /// стандартным переходом `UICollectionView`.
     public var isEnabled: Bool = true
 
-    /// A per-path predicate that decides whether a deleted cell should explode.
+    /// Предикат для каждого отдельного path, определяющий, должна ли удалённая ячейка взорваться.
     ///
-    /// The default returns `true` for every path (all deletions burst). Return
-    /// `false` for a specific path to let that path use the standard deletion
-    /// animation while the rest of the batch still explodes. The closure is called
-    /// synchronously on the main thread during `prepare(forCollectionViewUpdates:)`.
+    /// По умолчанию возвращает `true` для каждого path (все удаления взрываются).
+    /// Вернуть `false` для конкретного path, чтобы он использовал стандартную
+    /// анимацию удаления, пока остальные в пакете всё равно взрываются. Closure
+    /// вызывается синхронно в главном потоке во время `prepare(forCollectionViewUpdates:)`.
     public var shouldExplode: (IndexPath) -> Bool = { _ in true }
 
-    /// The physics and timing parameters applied to the next explosion batch.
+    /// Параметры физики и тайминга, применяемые к следующему пакету взрывов.
     public var configuration: ExplosionConfiguration
 
-    /// The source of cells by index path. Defaults to `collectionView.cellForItem(at:)`.
+    /// Источник ячеек по index path. По умолчанию использует `collectionView.cellForItem(at:)`.
     ///
-    /// Override this in tests to supply mock cells without a live collection view.
-    /// In production code the default is sufficient; this property is public only
-    /// to make integration testing practical.
+    /// Переопределите в тестах, чтобы предоставлять mock-ячейки без живого collection view.
+    /// В рабочем коде значение по умолчанию достаточно; свойство публично исключительно
+    /// для удобства интеграционного тестирования.
     public var cellProvider: (IndexPath) -> UICollectionViewCell?
 
     private weak var collectionView: UICollectionView?
@@ -80,8 +79,8 @@ public final class CellExplosionCoordinator {
         let image: UIImage
         let originalFrame: CGRect
         let initialHeight: CGFloat
-        // RAII: tracker's CALayer is removed from the container in its deinit,
-        // tying tracker lifetime to its owning entry in pendingExplosions.
+        // RAII: CALayer tracker-а удаляется из контейнера в его deinit,
+        // привязывая время жизни tracker-а к владеющей им записи в pendingExplosions.
         let tracker: CollapseTracker
     }
 
@@ -89,23 +88,23 @@ public final class CellExplosionCoordinator {
     private var displayLink: CADisplayLink?
     private var displayLinkProxy: DisplayLinkProxy?
 
-    /// Creates a coordinator and registers it as the layout controller's delegate.
+    /// Создаёт координатор и регистрирует его как delegate layout-контроллера.
     ///
-    /// The coordinator holds weak references to `collectionView` and `container`
-    /// so it does not prevent deallocation of the hosting view hierarchy.
+    /// Координатор хранит слабые ссылки на `collectionView` и `container`,
+    /// поэтому не препятствует освобождению памяти хост-иерархии видов.
     ///
     /// - Parameters:
-    ///   - collectionView: The collection view whose deletions will be intercepted.
-    ///   - container: The view used as the coordinate-space origin for particle
-    ///     positions and as the parent of `CollapseTracker` layers. Typically the
-    ///     view controller's root view.
-    ///   - renderer: The particle rendering backend. Its `view` should already be
-    ///     added to `container` before any deletions occur.
-    ///   - layoutController: The layout controller embedded in the consumer's flow
-    ///     layout. The coordinator sets itself as the controller's delegate.
-    ///   - snapshotProvider: The cell snapshot strategy. Defaults to
-    ///     `DefaultCellSnapshotProvider`, which is correct for non-inverted layouts.
-    ///   - configuration: Initial physics and timing parameters.
+    ///   - collectionView: Collection view, удаления из которого будут перехватываться.
+    ///   - container: Вид, используемый как начало координат для позиций частиц
+    ///     и как родитель для слоёв `CollapseTracker`. Как правило — корневой вид
+    ///     view controller.
+    ///   - renderer: Rendering-бэкенд частиц. Его `view` должен быть добавлен
+    ///     в `container` до первых удалений.
+    ///   - layoutController: Layout-контроллер, встроенный в flow layout потребителя.
+    ///     Координатор устанавливает себя как delegate контроллера.
+    ///   - snapshotProvider: Стратегия получения snapshot ячейки. По умолчанию
+    ///     `DefaultCellSnapshotProvider`, корректный для неперевёрнутых layout.
+    ///   - configuration: Начальные параметры физики и тайминга.
     public init(
         collectionView: UICollectionView,
         container: UIView,
@@ -130,20 +129,20 @@ public final class CellExplosionCoordinator {
         displayLink?.invalidate()
     }
 
-    /// Handles a confirmed deletion batch after `isEnabled` and `shouldExplode` filtering.
+    /// Обрабатывает подтверждённый пакет удалений после фильтрации через `isEnabled` и `shouldExplode`.
     ///
-    /// One `CollapseTracker` is shared by the entire batch so that a single
-    /// `CABasicAnimation` drives all parallel cell collapses in sync. Each cell
-    /// that passes the snapshot check produces a `PendingExplosion` entry, and
-    /// the `CADisplayLink` loop fires until all entries have burst.
+    /// Один `CollapseTracker` разделяется на весь пакет, чтобы одна `CABasicAnimation`
+    /// синхронно управляла всеми параллельными коллапсами ячеек. Каждая ячейка,
+    /// прошедшая проверку snapshot, создаёт запись `PendingExplosion`, а цикл
+    /// `CADisplayLink` работает, пока все записи не взорвутся.
     private func handleDeletions(_ paths: [IndexPath]) {
         guard isEnabled, let container else { return }
         let filtered = paths.filter { shouldExplode($0) }
         guard !filtered.isEmpty else { return }
 
         var ready: [IndexPath] = []
-        // One tracker per batch: a single CABasicAnimation drives all parallel
-        // collapses in the same delete batch in lock-step.
+        // Один tracker на пакет: одна CABasicAnimation синхронно управляет всеми
+        // параллельными коллапсами в одном пакете удалений.
         let tracker = CollapseTracker(container: container)
 
         for path in filtered {
@@ -178,12 +177,12 @@ public final class CellExplosionCoordinator {
         processTick(fractionOverride: nil)
     }
 
-    /// Processes one `CADisplayLink` tick: checks each pending explosion for burst,
-    /// generates particles, and invalidates the display link when all entries are done.
+    /// Обрабатывает один тик `CADisplayLink`: проверяет каждый ожидающий взрыв,
+    /// генерирует частицы и инвалидирует display link, когда все записи обработаны.
     ///
-    /// `max(1, currentHeight)` guards against passing a zero-height value to
-    /// `cropBottom(of:toPoints:)`, which would produce a zero-pixel crop and an
-    /// empty particle batch.
+    /// `max(1, currentHeight)` защищает от передачи нулевой высоты в
+    /// `cropBottom(of:toPoints:)`, что привело бы к нулевой обрезке и пустому
+    /// пакету частиц.
     private func processTick(fractionOverride: CGFloat?) {
         guard !pendingExplosions.isEmpty else {
             invalidateDisplayLink()
@@ -197,8 +196,8 @@ public final class CellExplosionCoordinator {
             let fraction = fractionOverride ?? entry.tracker.currentFraction()
             let currentHeight = entry.initialHeight * fraction
             if currentHeight <= configuration.burstThreshold {
-                // Clamp to at least 1 point so cropBottom never receives a
-                // zero height, which would produce an empty (or nil) crop.
+                // Ограничиваем минимум 1 точкой, чтобы cropBottom никогда не получал
+                // нулевую высоту, которая привела бы к пустой (или nil) обрезке.
                 let h = max(1, currentHeight)
                 let currentFrame = CGRect(
                     x: entry.originalFrame.origin.x,
@@ -248,11 +247,10 @@ extension CellExplosionCoordinator: CellCollapseLayoutControllerDelegate {
     }
 }
 
-/// Breaks the CADisplayLink → coordinator retain cycle. The runloop holds the
-/// proxy strongly, but the proxy only weakly references the coordinator, so
-/// dismissing the host view controller mid-animation deallocates the
-/// coordinator on schedule (the proxy then forwards no-op ticks until the next
-/// invalidation).
+/// Разрывает цикл удержания CADisplayLink → coordinator. Runloop держит proxy
+/// сильно, но proxy ссылается на coordinator только слабо, поэтому закрытие
+/// host view controller в середине анимации освобождает coordinator вовремя
+/// (proxy продолжает пересылать no-op тики до следующей инвалидации).
 private final class DisplayLinkProxy {
     weak var target: CellExplosionCoordinator?
 

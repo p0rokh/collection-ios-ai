@@ -1,36 +1,36 @@
 import UIKit
 
-/// Receives delete-batch notifications from `CellCollapseLayoutController` before
-/// layout attributes are finalized.
+/// Получает уведомления о пакетах удалений от `CellCollapseLayoutController`
+/// до финализации layout attributes.
 ///
-/// Implement this protocol to intercept deletion index paths and decide which ones
-/// should use the explosion+collapse effect. The coordinator is the production
-/// implementation; pass it as `layoutController.delegate` (which the coordinator's
-/// `init` does automatically).
+/// Реализуйте этот protocol, чтобы перехватывать index path удаляемых элементов
+/// и решать, для каких из них применять эффект взрыва+коллапса. Координатор —
+/// рабочая реализация; передайте его как `layoutController.delegate`
+/// (что `init` координатора делает автоматически).
 public protocol CellCollapseLayoutControllerDelegate: AnyObject {
-    /// Called during `prepare(forCollectionViewUpdates:)` when one or more items
-    /// are being deleted from the collection view.
+    /// Вызывается во время `prepare(forCollectionViewUpdates:)`, когда из
+    /// collection view удаляется один или несколько элементов.
     ///
-    /// The delegate must call `controller.markCollapsing(at:)` with the subset of
-    /// `indexPaths` it wants to animate before the method returns, because
-    /// `finalLayoutAttributesForDisappearingItem(at:)` queries the marked set
-    /// synchronously on the same run-loop turn.
+    /// Delegate обязан вызвать `controller.markCollapsing(at:)` для подмножества
+    /// `indexPaths`, которое нужно анимировать, до возврата из метода — потому что
+    /// `finalLayoutAttributesForDisappearingItem(at:)` синхронно обращается
+    /// к помеченному множеству в той же итерации run-loop.
     ///
     /// - Parameters:
-    ///   - controller: The layout controller that detected the deletions.
-    ///   - indexPaths: All index paths that are being deleted in the current batch.
+    ///   - controller: Layout-контроллер, обнаруживший удаления.
+    ///   - indexPaths: Все index path, удаляемые в текущем пакете.
     func cellCollapseLayoutController(
         _ controller: CellCollapseLayoutController,
         willProcessDeletionsAt indexPaths: [IndexPath]
     )
 }
 
-/// Composition helper that plugs the collapse animation into any existing
-/// `UICollectionViewFlowLayout` subclass.
+/// Вспомогательный composition-объект, встраивающий анимацию коллапса в любой
+/// существующий подкласс `UICollectionViewFlowLayout`.
 ///
-/// Instead of subclassing a layout provided by this package, the consumer embeds
-/// `CellCollapseLayoutController` as a stored property and forwards three layout
-/// override points to it:
+/// Вместо наследования от layout этого пакета потребитель добавляет
+/// `CellCollapseLayoutController` как хранимое свойство и перенаправляет
+/// три точки переопределения layout:
 ///
 /// ```swift
 /// override func prepare(forCollectionViewUpdates items: [UICollectionViewUpdateItem]) {
@@ -51,37 +51,37 @@ public protocol CellCollapseLayoutControllerDelegate: AnyObject {
 /// }
 /// ```
 ///
-/// When a deletion batch is processed, `prepare(updateItems:)` notifies `delegate`
-/// (typically `CellExplosionCoordinator`), which calls back `markCollapsing(at:)`
-/// for the paths it wants to animate. `finalAttributes(for:base:)` then returns
-/// `CollapsibleLayoutAttributes` only for marked paths, leaving all other paths
-/// with their standard disappearance attributes.
+/// При обработке пакета удалений `prepare(updateItems:)` уведомляет `delegate`
+/// (как правило, `CellExplosionCoordinator`), который в ответ вызывает
+/// `markCollapsing(at:)` для нужных path. `finalAttributes(for:base:)` затем
+/// возвращает `CollapsibleLayoutAttributes` только для помеченных path, оставляя
+/// остальные со стандартными attributes исчезновения.
 public final class CellCollapseLayoutController {
 
-    /// The delegate that receives `willProcessDeletionsAt:` and decides which
-    /// paths to animate. Set automatically by `CellExplosionCoordinator.init`.
+    /// Delegate, получающий `willProcessDeletionsAt:` и решающий, какие
+    /// path анимировать. Устанавливается автоматически в `CellExplosionCoordinator.init`.
     public weak var delegate: CellCollapseLayoutControllerDelegate?
 
-    /// The active explosion configuration. Consumers may swap this at runtime;
-    /// changes apply to the next deletion batch.
+    /// Активная конфигурация взрыва. Потребители могут менять её во время выполнения;
+    /// изменения применяются к следующему пакету удалений.
     public var configuration: ExplosionConfiguration
 
     private var marked: Set<IndexPath> = []
 
-    /// Creates a layout controller with the given configuration.
+    /// Создаёт layout-контроллер с заданной конфигурацией.
     ///
-    /// - Parameter configuration: Initial physics and timing parameters. Defaults
-    ///   to `.default`, which matches the reference demo tuning.
+    /// - Parameter configuration: Начальные параметры физики и тайминга. По умолчанию
+    ///   `.default`, соответствующее настройкам референсного демо.
     public init(configuration: ExplosionConfiguration = .default) {
         self.configuration = configuration
     }
 
-    /// Filters delete actions from `updateItems` and notifies the delegate.
+    /// Отфильтровывает действия удаления из `updateItems` и уведомляет delegate.
     ///
-    /// Call this at the start of `prepare(forCollectionViewUpdates:)`, after
-    /// calling `super`. If there are no delete items the delegate is not called.
+    /// Вызывайте в начале `prepare(forCollectionViewUpdates:)`, после вызова `super`.
+    /// Если удаляемых элементов нет, delegate не вызывается.
     ///
-    /// - Parameter updateItems: The full array received from
+    /// - Parameter updateItems: Полный массив, полученный из
     ///   `prepare(forCollectionViewUpdates:)`.
     public func prepare(updateItems: [UICollectionViewUpdateItem]) {
         let deletePaths = updateItems.compactMap { item -> IndexPath? in
@@ -92,47 +92,46 @@ public final class CellCollapseLayoutController {
         delegate?.cellCollapseLayoutController(self, willProcessDeletionsAt: deletePaths)
     }
 
-    /// Clears the set of marked paths at the end of the batch update.
+    /// Очищает множество помеченных path по завершении пакетного обновления.
     ///
-    /// Call this inside `finalizeCollectionViewUpdates()`, after `super`. Failing
-    /// to call `finalize()` will leave stale paths marked and may incorrectly
-    /// suppress the standard disappearance animation in the next deletion batch.
+    /// Вызывайте внутри `finalizeCollectionViewUpdates()`, после `super`. Если
+    /// не вызвать `finalize()`, устаревшие path останутся помеченными и могут
+    /// ошибочно подавить стандартную анимацию исчезновения в следующем пакете удалений.
     public func finalize() {
         marked.removeAll()
     }
 
-    /// Marks `indexPaths` so that `finalAttributes(for:base:)` returns
-    /// `CollapsibleLayoutAttributes` for them.
+    /// Помечает `indexPaths` так, чтобы `finalAttributes(for:base:)` возвращал
+    /// для них `CollapsibleLayoutAttributes`.
     ///
-    /// Called by `CellExplosionCoordinator` after it has captured snapshots and
-    /// is ready to drive the collapse. Paths that are not marked receive the
-    /// unmodified `base` attributes and animate with the standard UICollectionView
-    /// deletion transition.
+    /// Вызывается `CellExplosionCoordinator` после захвата snapshot и готовности
+    /// управлять коллапсом. Непомеченные path получают немодифицированные `base`
+    /// attributes и анимируются стандартным переходом удаления UICollectionView.
     ///
-    /// - Parameter indexPaths: The paths for which the collapse+explosion effect
-    ///   should be applied in the current batch.
+    /// - Parameter indexPaths: Path, для которых в текущем пакете должен быть
+    ///   применён эффект коллапса+взрыва.
     public func markCollapsing(at indexPaths: [IndexPath]) {
         for path in indexPaths { marked.insert(path) }
     }
 
-    /// Returns the final layout attributes for a disappearing item.
+    /// Возвращает финальные layout attributes для исчезающего элемента.
     ///
-    /// For marked paths, returns `CollapsibleLayoutAttributes` with `frame.height`
-    /// set to `0`, `alpha` pinned to `1` (so the cell stays visible during the
-    /// coordinator-driven collapse rather than fading out via UIKit's default
-    /// disappearance animation), `lockedHeight` set to the item's original height,
-    /// and `collapseProgress` set to `0`. For all other paths the `base` attributes
-    /// are returned unchanged.
+    /// Для помеченных path возвращает `CollapsibleLayoutAttributes` с `frame.height`
+    /// равным `0`, `alpha` зафиксированным на `1` (чтобы ячейка оставалась видимой
+    /// во время управляемого координатором коллапса, а не угасала через стандартную
+    /// анимацию исчезновения UIKit), `lockedHeight` равным исходной высоте элемента
+    /// и `collapseProgress` равным `0`. Для всех остальных path возвращаются
+    /// `base` attributes без изменений.
     ///
-    /// Call this at the end of `finalLayoutAttributesForDisappearingItem(at:)`,
-    /// passing the value from `super` as `base`.
+    /// Вызывайте в конце `finalLayoutAttributesForDisappearingItem(at:)`,
+    /// передавая значение из `super` как `base`.
     ///
     /// - Parameters:
-    ///   - itemIndexPath: The index path of the disappearing item.
-    ///   - base: The attributes produced by the superclass, or `nil` if the
-    ///     superclass has none.
-    /// - Returns: Modified `CollapsibleLayoutAttributes` for marked paths, or
-    ///   `base` unmodified for unmarked paths.
+    ///   - itemIndexPath: Index path исчезающего элемента.
+    ///   - base: Attributes, сформированные суперклассом, или `nil`, если суперкласс
+    ///     ничего не вернул.
+    /// - Returns: Модифицированные `CollapsibleLayoutAttributes` для помеченных path
+    ///   или немодифицированные `base` для непомеченных.
     public func finalAttributes(
         for itemIndexPath: IndexPath,
         base: UICollectionViewLayoutAttributes?

@@ -1,49 +1,50 @@
 import CoreGraphics
 
-/// A single renderable particle in the explosion effect.
+/// Единичная отображаемая частица эффекта взрыва.
 ///
-/// `Particle` is a pure value type that lives in the Domain layer and carries the
-/// complete physical state needed by any rendering backend. Each field is updated
-/// every frame by `ParticlePhysics.step(_:dt:configuration:)`; the renderer reads
-/// the result and maps it to a visual node.
+/// `Particle` — чистый тип-значение, живущий в Domain-слое и несущий полное
+/// физическое состояние, необходимое любому rendering-бэкенду. Каждое поле
+/// обновляется каждый кадр в `ParticlePhysics.step(_:dt:configuration:)`;
+/// renderer читает результат и отображает его в визуальный узел.
 ///
-/// Particles are created in bulk by `ParticleFactory.makeParticles(from:scale:origin:configuration:)`
-/// and passed to `ParticleRenderer.addParticles(_:)`. Consumers rarely need to
-/// construct `Particle` directly unless writing a custom renderer or factory.
+/// Частицы создаются пачкой в `ParticleFactory.makeParticles(from:scale:origin:configuration:)`
+/// и передаются в `ParticleRenderer.addParticles(_:)`. Потребителям редко
+/// нужно создавать `Particle` напрямую — разве что при написании custom
+/// renderer или factory.
 public struct Particle {
-    /// Horizontal position in the renderer's coordinate space, in points.
+    /// Горизонтальная позиция в координатном пространстве renderer, в точках.
     public var x: CGFloat
-    /// Vertical position in the renderer's coordinate space, in points.
+    /// Вертикальная позиция в координатном пространстве renderer, в точках.
     public var y: CGFloat
-    /// Horizontal velocity, in points per second.
+    /// Горизонтальная скорость, в точках в секунду.
     public var vx: CGFloat
-    /// Vertical velocity, in points per second.
+    /// Вертикальная скорость, в точках в секунду.
     public var vy: CGFloat
-    /// The particle's base color, sampled from the cell snapshot.
+    /// Базовый цвет частицы, взятый из snapshot ячейки.
     public var color: CGColor
-    /// Width and height of the square particle sprite, in points.
+    /// Ширина и высота квадратного спрайта частицы, в точках.
     public var size: CGFloat
-    /// Current rotation angle, in radians.
+    /// Текущий угол вращения, в радианах.
     public var rotation: CGFloat
-    /// Rotational velocity, in radians per second.
+    /// Угловая скорость, в радианах в секунду.
     public var vRotation: CGFloat
-    /// Current opacity in the range `[0, 1]`. Reaches 0 when the particle should be removed.
+    /// Текущая прозрачность в диапазоне `[0, 1]`. Достигает 0, когда частицу следует удалить.
     public var alpha: CGFloat
-    /// Rate at which `alpha` decreases per second. Derived from the particle's random lifetime.
+    /// Скорость уменьшения `alpha` в секунду. Вычисляется из случайного времени жизни частицы.
     public var alphaDecay: CGFloat
-    /// Total elapsed time since the particle was spawned, in seconds. Used to drive wobble.
+    /// Суммарное прошедшее время с момента появления частицы, в секундах. Используется для wobble.
     public var age: CGFloat
-    /// Wobble amplitude along the X axis, in points.
+    /// Амплитуда wobble по оси X, в точках.
     public var wAmpX: CGFloat
-    /// Wobble amplitude along the Y axis, in points.
+    /// Амплитуда wobble по оси Y, в точках.
     public var wAmpY: CGFloat
-    /// Wobble frequency along the X axis, in Hz.
+    /// Частота wobble по оси X, в Гц.
     public var wFreqX: CGFloat
-    /// Wobble frequency along the Y axis, in Hz.
+    /// Частота wobble по оси Y, в Гц.
     public var wFreqY: CGFloat
-    /// Initial phase offset for the X-axis wobble oscillator, in radians.
+    /// Начальное смещение фазы осциллятора wobble по оси X, в радианах.
     public var wPhaseX: CGFloat
-    /// Initial phase offset for the Y-axis wobble oscillator, in radians.
+    /// Начальное смещение фазы осциллятора wobble по оси Y, в радианах.
     public var wPhaseY: CGFloat
 
     public init(

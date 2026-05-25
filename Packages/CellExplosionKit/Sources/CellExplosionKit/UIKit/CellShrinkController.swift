@@ -1,10 +1,10 @@
 import UIKit
 
-/// Composition helper that keeps a cell's content view pinned to the bottom edge
-/// while the cell's frame shrinks during the collapse animation.
+/// Вспомогательный composition-объект, удерживающий content view ячейки прижатым
+/// к нижнему краю, пока frame ячейки сжимается в ходе анимации коллапса.
 ///
-/// Embed `CellShrinkController` as a stored property in any `UICollectionViewCell`
-/// subclass and forward two layout override points and `prepareForReuse`:
+/// Добавьте `CellShrinkController` как хранимое свойство в любой подкласс
+/// `UICollectionViewCell` и перенаправьте две точки переопределения layout и `prepareForReuse`:
 ///
 /// ```swift
 /// private let shrinkController = CellShrinkController()
@@ -25,21 +25,21 @@ import UIKit
 /// }
 /// ```
 ///
-/// When no `CollapsibleLayoutAttributes` are present (e.g., during normal scrolling
-/// or when the layout controller is not wired up) `CellShrinkController` is a
-/// complete no-op and adds no overhead.
+/// Когда `CollapsibleLayoutAttributes` отсутствуют (например, при обычном скролле
+/// или когда layout-контроллер не подключён), `CellShrinkController` является
+/// полным no-op и не добавляет накладных расходов.
 public final class CellShrinkController {
 
     private var lockedHeight: CGFloat?
 
     public init() {}
 
-    /// Reads `lockedHeight` from `layoutAttributes` if they are `CollapsibleLayoutAttributes`.
+    /// Читает `lockedHeight` из `layoutAttributes`, если они являются `CollapsibleLayoutAttributes`.
     ///
-    /// Call this inside `apply(_:)`, after `super`. If `layoutAttributes` is not a
-    /// `CollapsibleLayoutAttributes` instance the method does nothing.
+    /// Вызывайте внутри `apply(_:)`, после `super`. Если `layoutAttributes` не является
+    /// экземпляром `CollapsibleLayoutAttributes`, метод ничего не делает.
     ///
-    /// - Parameter layoutAttributes: The attributes delivered by the layout.
+    /// - Parameter layoutAttributes: Attributes, переданные layout-системой.
     public func apply(layoutAttributes: UICollectionViewLayoutAttributes) {
         guard let collapsible = layoutAttributes as? CollapsibleLayoutAttributes else { return }
         if let locked = collapsible.lockedHeight {
@@ -47,36 +47,33 @@ public final class CellShrinkController {
         }
     }
 
-    /// Repositions `contentView` so that its bottom edge stays aligned with the
-    /// bottom of the original (pre-collapse) cell area while the cell's frame
-    /// shrinks upward.
+    /// Перемещает `contentView` так, чтобы его нижний край оставался выровненным
+    /// с нижней границей исходной (до коллапса) области ячейки, пока frame
+    /// ячейки сжимается вверх.
     ///
-    /// Call this inside `layoutSubviews()`, after `super`. When the current
-    /// `cellBounds.height` is less than `lockedHeight`, the content view is given
-    /// its original size and shifted downward to remain "anchored" at the bottom —
-    /// producing the effect of content staying put while the top of the cell
-    /// collapses.
+    /// Вызывайте внутри `layoutSubviews()`, после `super`. Когда текущий
+    /// `cellBounds.height` меньше `lockedHeight`, content view получает исходный
+    /// размер и смещается вниз, оставаясь «прикреплённым» к нижнему краю —
+    /// создавая эффект неподвижного контента при коллапсе верхней части ячейки.
     ///
-    /// The implementation sets `bounds` and `center` rather than `frame` to
-    /// preserve any `transform` applied to the content view. In chat-style
-    /// collections the cell has a `transform.scaleY(-1)` flip applied, and setting
-    /// `frame` directly would apply in the parent's (pre-transform) space and
-    /// produce incorrect layout.
+    /// Реализация устанавливает `bounds` и `center`, а не `frame`, чтобы сохранить
+    /// любой `transform`, применённый к content view. В чат-коллекциях к ячейке
+    /// применён переворот `transform.scaleY(-1)`, и прямая установка `frame`
+    /// работала бы в пространстве родителя (до transform) и давала бы неверный layout.
     ///
     /// - Parameters:
-    ///   - contentView: The cell's `contentView` to reposition.
-    ///   - cellBounds: The cell's current `bounds`, which shrinks as the collapse
-    ///     animation progresses.
+    ///   - contentView: `contentView` ячейки для перепозиционирования.
+    ///   - cellBounds: Текущие `bounds` ячейки, сжимающиеся по мере анимации коллапса.
     public func apply(toContentView contentView: UIView, cellBounds: CGRect) {
         guard let lockedHeight, cellBounds.height < lockedHeight else { return }
         contentView.bounds = CGRect(x: 0, y: 0, width: cellBounds.width, height: lockedHeight)
         contentView.center = CGPoint(x: cellBounds.width / 2, y: cellBounds.height + lockedHeight / 2)
     }
 
-    /// Clears the stored locked height.
+    /// Сбрасывает сохранённую заблокированную высоту.
     ///
-    /// Call this inside `prepareForReuse()` to prevent a reused cell from briefly
-    /// applying collapse geometry from a previous deletion.
+    /// Вызывайте внутри `prepareForReuse()`, чтобы переиспользуемая ячейка не
+    /// применяла ненадолго геометрию коллапса от предыдущего удаления.
     public func reset() {
         lockedHeight = nil
     }

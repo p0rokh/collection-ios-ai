@@ -1,26 +1,26 @@
 import UIKit
 
-/// The seam between the Domain layer and any particle rendering backend.
+/// Граница между Domain-слоем и любым rendering-бэкендом частиц.
 ///
-/// `ParticleRenderer` is the only point where Domain code depends on UIKit: the
-/// `view` property exists so the coordinator can bring the renderer's overlay
-/// in front of the collection view at burst time. The physics and lifecycle of
-/// every particle remains entirely inside the Domain and Rendering layers.
+/// `ParticleRenderer` — единственная точка, где Domain-код зависит от UIKit:
+/// свойство `view` существует для того, чтобы координатор мог вывести оверлей
+/// renderer поверх collection view в момент взрыва. Физика и жизненный цикл
+/// каждой частицы остаются целиком внутри Domain и Rendering-слоёв.
 ///
-/// The default implementation is `SpriteKitParticleRenderer`. A Metal-based
-/// alternative can be substituted by conforming to this protocol and passing it
-/// to `CellExplosionCoordinator.init`; no Domain or UIKit layer code needs to change.
+/// Реализация по умолчанию — `SpriteKitParticleRenderer`. Альтернативу на Metal
+/// можно подключить, реализовав этот protocol и передав его в
+/// `CellExplosionCoordinator.init`; код Domain и UIKit-слоёв при этом менять не нужно.
 public protocol ParticleRenderer: AnyObject {
-    /// The view that displays rendered particles. Add it as a sibling of the
-    /// collection view in the container hierarchy; the coordinator will call
-    /// `bringSubviewToFront` automatically before each burst.
+    /// Вид, отображающий отрендеренные частицы. Добавьте его как дочерний элемент
+    /// того же контейнера, что и collection view; координатор автоматически вызовет
+    /// `bringSubviewToFront` перед каждым взрывом.
     var view: UIView { get }
 
-    /// Enqueues `particles` for immediate rendering.
+    /// Ставит `particles` в очередь для немедленного рендеринга.
     ///
-    /// Implementations should accept any number of calls per frame — the
-    /// coordinator may call this once per deleted cell in a batch update.
-    /// Particles are rendered until their `alpha` drops below the renderer's
-    /// removal threshold.
+    /// Реализации должны принимать любое количество вызовов за кадр —
+    /// координатор может вызвать этот метод по одному разу для каждой
+    /// удалённой ячейки в пакете обновлений. Частицы рендерятся до тех пор,
+    /// пока их `alpha` не упадёт ниже порога удаления renderer.
     func addParticles(_ particles: [Particle])
 }

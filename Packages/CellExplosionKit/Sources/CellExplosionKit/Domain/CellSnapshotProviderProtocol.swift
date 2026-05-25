@@ -1,36 +1,36 @@
 import UIKit
 
-/// Abstracts the capture of a cell image so that consumers with non-standard
-/// coordinate spaces can provide a corrected snapshot.
+/// Абстрагирует захват изображения ячейки, позволяя потребителям с нестандартными
+/// координатными пространствами предоставлять скорректированный snapshot.
 ///
-/// The default implementation, `DefaultCellSnapshotProvider`, renders the cell
-/// hierarchy with `drawHierarchy(in:afterScreenUpdates:)` — correct for standard
-/// (Y-down) collection views. Chat-style collections that apply a `transform.y = -1`
-/// flip to their collection view need a custom provider that inverts the graphics
-/// context before drawing, so that the resulting image is right-side up when the
-/// `ParticleFactory` reads its pixels.
+/// Реализация по умолчанию, `DefaultCellSnapshotProvider`, рендерит иерархию
+/// ячейки с помощью `drawHierarchy(in:afterScreenUpdates:)` — корректно для
+/// стандартных (Y-down) collection view. Чат-коллекции, применяющие переворот
+/// `transform.y = -1` к collection view, нуждаются в custom provider, который
+/// инвертирует графический контекст перед рисованием, чтобы полученное изображение
+/// было ориентировано правильно при чтении пикселей в `ParticleFactory`.
 ///
-/// Pass a custom implementation to `CellExplosionCoordinator.init` via the
-/// `snapshotProvider` parameter.
+/// Передайте custom реализацию в `CellExplosionCoordinator.init` через параметр
+/// `snapshotProvider`.
 public protocol CellSnapshotProvider {
-    /// Renders `cell` into a `UIImage` in the coordinate space expected by
+    /// Рендерит `cell` в `UIImage` в координатном пространстве, ожидаемом
     /// `ParticleFactory`.
     ///
-    /// Return `nil` if the cell has zero size or cannot be rendered; the
-    /// coordinator silently skips that cell and falls back to the standard
-    /// UICollectionView deletion animation for its index path.
+    /// Вернуть `nil`, если ячейка имеет нулевой размер или не может быть отрендерена;
+    /// координатор молча пропустит эту ячейку и использует стандартную анимацию
+    /// удаления UICollectionView для её index path.
     func snapshot(of cell: UICollectionViewCell) -> UIImage?
 
-    /// Returns the bottom `points` points of `image`, cropped to the current
-    /// visible height of the collapsing cell.
+    /// Возвращает нижние `points` точек из `image`, обрезанные до текущей
+    /// видимой высоты сворачивающейся ячейки.
     ///
-    /// The coordinator calls this every `CADisplayLink` tick, passing a
-    /// progressively smaller `points` value as the cell collapses. Return `nil`
-    /// to skip the particle burst for that tick; the coordinator will retry on
-    /// the next frame.
+    /// Координатор вызывает этот метод на каждом тике `CADisplayLink`, передавая
+    /// прогрессивно уменьшающееся значение `points` по мере коллапса ячейки.
+    /// Вернуть `nil`, чтобы пропустить взрыв частиц на этом тике; координатор
+    /// повторит попытку на следующем кадре.
     ///
     /// - Parameters:
-    ///   - image: The full-height snapshot produced by `snapshot(of:)`.
-    ///   - points: The desired crop height in logical points. Always ≥ 1.
+    ///   - image: Полноразмерный snapshot, полученный из `snapshot(of:)`.
+    ///   - points: Желаемая высота обрезки в логических точках. Всегда ≥ 1.
     func cropBottom(of image: UIImage, toPoints points: CGFloat) -> UIImage?
 }

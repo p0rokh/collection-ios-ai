@@ -1,13 +1,13 @@
 import UIKit
 import SpriteKit
 
-/// Internal SpriteKit scene that owns and animates all live particle nodes.
+/// Внутренняя SpriteKit-сцена, владеющая всеми живыми узлами частиц и анимирующая их.
 ///
-/// `SpriteKitParticleScene` is not part of the public API; it is driven entirely
-/// by `SpriteKitParticleRenderer`. Each `Particle` value added via `addParticles`
-/// gets a corresponding `SKSpriteNode`; the SpriteKit game loop advances physics
-/// via `ParticlePhysics.step` and removes nodes when they become invisible or
-/// leave the visible area.
+/// `SpriteKitParticleScene` не является частью публичного API; ею полностью управляет
+/// `SpriteKitParticleRenderer`. Каждое значение `Particle`, добавленное через
+/// `addParticles`, получает соответствующий `SKSpriteNode`; игровой цикл SpriteKit
+/// продвигает физику через `ParticlePhysics.step` и удаляет узлы, когда они
+/// становятся невидимыми или покидают видимую область.
 final class SpriteKitParticleScene: SKScene {
 
     var configuration: ExplosionConfiguration = .default
@@ -18,11 +18,11 @@ final class SpriteKitParticleScene: SKScene {
     private var aliveCount: Int = 0
     private var lastTime: TimeInterval = 0
 
-    /// Spawns an `SKSpriteNode` for each particle and appends it to the scene.
+    /// Создаёт `SKSpriteNode` для каждой частицы и добавляет его в сцену.
     ///
-    /// `Particle` coordinates use UIKit's Y-down convention; the conversion
-    /// `h - p.y` maps them to SpriteKit's Y-up coordinate space, where `h` is
-    /// the current scene height.
+    /// Координаты `Particle` используют Y-down конвенцию UIKit; преобразование
+    /// `h - p.y` переводит их в координатное пространство SpriteKit (Y-up),
+    /// где `h` — текущая высота сцены.
     func addParticles(_ newParticles: [Particle]) {
         let h = size.height
         for p in newParticles {
@@ -30,8 +30,8 @@ final class SpriteKitParticleScene: SKScene {
                 color: UIColor(cgColor: p.color),
                 size: CGSize(width: p.size, height: p.size)
             )
-            // Particle.y is stored in UIKit Y-down space; SpriteKit uses Y-up,
-            // so the position is flipped around the scene's vertical midpoint.
+            // Particle.y хранится в пространстве UIKit (Y-down); SpriteKit использует
+            // Y-up, поэтому позиция переворачивается относительно вертикальной середины сцены.
             node.position = CGPoint(x: p.x, y: h - p.y)
             addChild(node)
             nodes.append(node)
@@ -46,8 +46,9 @@ final class SpriteKitParticleScene: SKScene {
             lastTime = currentTime
             return
         }
-        // Clamp dt to 0.05 s (20 fps floor) so that backgrounding or a slow frame
-        // never produces a huge position jump that sends particles off-screen instantly.
+        // Ограничиваем dt значением 0.05 с (нижний предел 20 fps), чтобы переход
+        // в фоновый режим или медленный кадр не вызывал большого скачка позиции,
+        // мгновенно выбрасывающего частицы за экран.
         let dt = CGFloat(min(0.05, currentTime - lastTime))
         lastTime = currentTime
 
@@ -67,7 +68,7 @@ final class SpriteKitParticleScene: SKScene {
                 dead[i] = true
                 aliveCount -= 1
             } else {
-                // Apply the same UIKit Y-down → SpriteKit Y-up conversion used in addParticles.
+                // Применяем то же преобразование UIKit Y-down → SpriteKit Y-up, что и в addParticles.
                 nodes[i].position = CGPoint(x: particles[i].x, y: h - particles[i].y)
                 nodes[i].zRotation = -particles[i].rotation
                 nodes[i].alpha = particles[i].alpha

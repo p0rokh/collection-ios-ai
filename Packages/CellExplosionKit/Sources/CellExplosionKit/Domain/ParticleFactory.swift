@@ -1,31 +1,33 @@
 import Foundation
 import CoreGraphics
 
-/// Converts a rasterized cell snapshot into an array of `Particle` values.
+/// Преобразует растеризованный snapshot ячейки в массив значений `Particle`.
 ///
-/// `ParticleFactory` is an internal Domain utility; it is not part of the public
-/// API. `CellExplosionCoordinator` calls `makeParticles(from:scale:origin:configuration:)`
-/// once per burst, passing the cropped bottom slice of the cell's snapshot image.
-/// The factory tiles the image with non-overlapping `chunkSize × chunkSize` squares
-/// and emits one particle per opaque chunk.
+/// `ParticleFactory` — внутренняя утилита Domain-слоя; она не является частью
+/// публичного API. `CellExplosionCoordinator` вызывает
+/// `makeParticles(from:scale:origin:configuration:)` один раз за взрыв,
+/// передавая обрезанный нижний срез snapshot-изображения ячейки.
+/// Factory разбивает изображение на непересекающиеся квадраты `chunkSize × chunkSize`
+/// и порождает одну частицу на каждый непрозрачный блок.
 enum ParticleFactory {
 
-    /// Creates a particle for every opaque chunk in `cgImage`.
+    /// Создаёт частицу для каждого непрозрачного блока в `cgImage`.
     ///
-    /// The image is rasterized into a CPU-readable pixel buffer once per call.
-    /// Each `chunkSize × chunkSize` tile is represented by the color of its center
-    /// pixel rather than an average — center sampling is fast, avoids blending
-    /// issues near antialiased edges, and is visually indistinguishable at the
-    /// typical chunk sizes used in this package.
+    /// Изображение растеризуется в CPU-доступный пиксельный буфер один раз за вызов.
+    /// Каждый блок `chunkSize × chunkSize` представлен цветом центрального пикселя,
+    /// а не средним значением — центральная выборка быстра, избегает проблем смешения
+    /// на антиалиасированных краях и визуально неотличима при типичных размерах блоков,
+    /// используемых в этом пакете.
     ///
     /// - Parameters:
-    ///   - cgImage: The source image, typically a bottom crop of the cell snapshot.
-    ///   - scale: Screen scale factor used to convert between pixel and point coordinates.
-    ///   - origin: Top-left corner of the image in the container's coordinate space, in points.
-    ///   - configuration: Provides `chunkSize`, `speed`, `upBias`, `wobbleAmplitude`,
-    ///     `wobbleFrequency`, and `lifetimeRange` for the spawned particles.
-    /// - Returns: One `Particle` per opaque chunk tile. Transparent tiles (alpha ≤ 30/255)
-    ///   are skipped to avoid spawning invisible ghost particles at image edges.
+    ///   - cgImage: Исходное изображение, как правило — нижний обрез snapshot ячейки.
+    ///   - scale: Масштабный коэффициент экрана для перевода между пиксельными и точечными координатами.
+    ///   - origin: Верхний левый угол изображения в координатном пространстве контейнера, в точках.
+    ///   - configuration: Предоставляет `chunkSize`, `speed`, `upBias`, `wobbleAmplitude`,
+    ///     `wobbleFrequency` и `lifetimeRange` для создаваемых частиц.
+    /// - Returns: По одной `Particle` на каждый непрозрачный блок. Прозрачные блоки
+    ///   (alpha ≤ 30/255) пропускаются, чтобы не порождать невидимые частицы-призраки
+    ///   на краях изображения.
     static func makeParticles(
         from cgImage: CGImage,
         scale: CGFloat,
@@ -63,15 +65,15 @@ enum ParticleFactory {
         while py < height {
             var px = 0
             while px < width {
-                // Sample the center pixel of each chunk rather than averaging all
-                // pixels in the tile. This is fast and visually equivalent at the
-                // small chunk sizes this package uses.
+                // Берём центральный пиксель каждого блока вместо усреднения всех
+                // пикселей в тайле. Это быстро и визуально эквивалентно при малых
+                // размерах блоков, используемых в этом пакете.
                 let cx = min(px + chunkPixels / 2, width - 1)
                 let cy = min(py + chunkPixels / 2, height - 1)
                 let i = (cy * width + cx) * 4
                 let a = pixelData[i + 3]
-                // Skip near-transparent pixels (alpha ≤ 30/255) to avoid spawning
-                // invisible ghost particles along antialiased image edges.
+                // Пропускаем почти прозрачные пиксели (alpha ≤ 30/255), чтобы не
+                // порождать невидимые частицы-призраки вдоль антиалиасированных краёв.
                 if a > 30 {
                     let jitter: CGFloat = 0.08
                     let r = max(0, min(1, CGFloat(pixelData[i]) / 255 + CGFloat.random(in: -jitter...jitter)))

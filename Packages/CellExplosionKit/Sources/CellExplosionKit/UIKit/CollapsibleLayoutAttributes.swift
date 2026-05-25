@@ -1,14 +1,14 @@
 import UIKit
 
-/// Custom layout attributes that carry the collapse state of a disappearing cell.
+/// Пользовательские layout attributes, несущие состояние коллапса исчезающей ячейки.
 ///
-/// `CollapsibleLayoutAttributes` extends `UICollectionViewLayoutAttributes` with
-/// two additional fields. `CellCollapseLayoutController` produces instances of this
-/// class in `finalAttributes(for:base:)`; the consumer's cell reads them inside
-/// `apply(_:)` via `CellShrinkController.apply(layoutAttributes:)`.
+/// `CollapsibleLayoutAttributes` расширяет `UICollectionViewLayoutAttributes`
+/// двумя дополнительными полями. `CellCollapseLayoutController` создаёт экземпляры
+/// этого класса в `finalAttributes(for:base:)`; ячейка потребителя читает их
+/// внутри `apply(_:)` через `CellShrinkController.apply(layoutAttributes:)`.
 ///
-/// To enable this flow the consumer's `UICollectionViewFlowLayout` subclass must
-/// override `layoutAttributesClass` to return `CollapsibleLayoutAttributes.self`:
+/// Чтобы этот механизм работал, `UICollectionViewFlowLayout`-подкласс потребителя
+/// должен переопределить `layoutAttributesClass`, вернув `CollapsibleLayoutAttributes.self`:
 /// ```swift
 /// override class var layoutAttributesClass: AnyClass {
 ///     CollapsibleLayoutAttributes.self
@@ -16,18 +16,19 @@ import UIKit
 /// ```
 public final class CollapsibleLayoutAttributes: UICollectionViewLayoutAttributes {
 
-    /// A fraction in `[0, 1]` representing how much of the original cell height
-    /// remains visible. `1.0` means fully expanded; `0.0` means fully collapsed.
+    /// Дробное значение в `[0, 1]`, показывающее, какая часть исходной высоты
+    /// ячейки остаётся видимой. `1.0` — полностью раскрыта; `0.0` — полностью свёрнута.
     ///
-    /// When `CellCollapseLayoutController` emits final attributes for a disappearing
-    /// cell, it sets this to `0` so the layout system animates the cell to zero height.
+    /// Когда `CellCollapseLayoutController` выдаёт финальные attributes для
+    /// исчезающей ячейки, это значение устанавливается в `0`, чтобы система
+    /// layout анимировала ячейку до нулевой высоты.
     public var collapseProgress: CGFloat = 1.0
 
-    /// The cell's original height before collapse began, in points.
+    /// Исходная высота ячейки до начала коллапса, в точках.
     ///
-    /// `CellShrinkController` uses this to keep the content view pinned at its
-    /// full height while the cell's frame shrinks, producing the visual effect of
-    /// the content sliding down as the cell collapses.
+    /// `CellShrinkController` использует её, чтобы удерживать content view
+    /// на полной высоте, пока frame ячейки сжимается, создавая визуальный
+    /// эффект скольжения контента вниз при коллапсе.
     public var lockedHeight: CGFloat?
 
     public override func copy(with zone: NSZone? = nil) -> Any {
@@ -37,13 +38,13 @@ public final class CollapsibleLayoutAttributes: UICollectionViewLayoutAttributes
         return copy
     }
 
-    /// Compares `collapseProgress` and `lockedHeight` in addition to the standard
-    /// `UICollectionViewLayoutAttributes` fields.
+    /// Сравнивает `collapseProgress` и `lockedHeight` в дополнение к стандартным
+    /// полям `UICollectionViewLayoutAttributes`.
     ///
-    /// Overriding `isEqual` is required because `UICollectionView` relies on
-    /// attribute equality to decide whether a given item needs its layout refreshed.
-    /// Without this override the collection view would ignore changes to the custom
-    /// fields and fail to drive the collapse animation.
+    /// Переопределение `isEqual` необходимо, потому что `UICollectionView` опирается
+    /// на равенство attributes при решении, нужно ли обновлять layout конкретного
+    /// элемента. Без этого переопределения collection view игнорировал бы изменения
+    /// пользовательских полей и не запускал анимацию коллапса.
     public override func isEqual(_ object: Any?) -> Bool {
         guard let other = object as? CollapsibleLayoutAttributes else { return false }
         guard super.isEqual(other) else { return false }

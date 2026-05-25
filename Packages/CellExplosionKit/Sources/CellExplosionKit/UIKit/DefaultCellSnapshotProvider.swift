@@ -1,22 +1,22 @@
 import UIKit
 
-/// The default `CellSnapshotProvider` for standard (non-inverted) collection views.
+/// Реализация `CellSnapshotProvider` по умолчанию для стандартных (неперевёрнутых) collection view.
 ///
-/// `DefaultCellSnapshotProvider` renders the cell hierarchy into a `UIImage` using
-/// `drawHierarchy(in:afterScreenUpdates:)`, which is correct when the collection
-/// view's coordinate space is not transformed. If your collection uses a
-/// `transform.scaleY(-1)` flip (common in chat UIs), supply a custom
-/// `CellSnapshotProvider` that inverts the graphics context before drawing and
-/// pass it to `CellExplosionCoordinator.init(snapshotProvider:)`.
+/// `DefaultCellSnapshotProvider` рендерит иерархию ячейки в `UIImage` с помощью
+/// `drawHierarchy(in:afterScreenUpdates:)` — корректно, когда координатное
+/// пространство collection view не трансформировано. Если ваша коллекция
+/// использует переворот `transform.scaleY(-1)` (характерно для чат-интерфейсов),
+/// предоставьте custom `CellSnapshotProvider`, инвертирующий графический контекст
+/// перед рисованием, и передайте его в `CellExplosionCoordinator.init(snapshotProvider:)`.
 public final class DefaultCellSnapshotProvider: CellSnapshotProvider {
 
     public init() {}
 
-    /// Renders `cell` into a `UIImage` at the screen's native scale.
+    /// Рендерит `cell` в `UIImage` в нативном масштабе экрана.
     ///
-    /// Returns `nil` if the cell has zero width or height, in which case the
-    /// coordinator skips the burst for that cell and uses the standard UIKit
-    /// deletion animation instead.
+    /// Возвращает `nil`, если ячейка имеет нулевую ширину или высоту; в таком
+    /// случае координатор пропускает взрыв для этой ячейки и использует
+    /// стандартную анимацию удаления UIKit.
     public func snapshot(of cell: UICollectionViewCell) -> UIImage? {
         let bounds = cell.bounds
         guard bounds.width > 0, bounds.height > 0 else { return nil }
@@ -26,17 +26,17 @@ public final class DefaultCellSnapshotProvider: CellSnapshotProvider {
         }
     }
 
-    /// Crops the bottom `points` logical points from `image`.
+    /// Обрезает нижние `points` логических точек из `image`.
     ///
-    /// The coordinator calls this every `CADisplayLink` tick with a progressively
-    /// smaller `points` value as the cell height collapses, so each tick receives
-    /// a thinner slice of the original snapshot. Returns `nil` only if the image
-    /// has no backing `CGImage`.
+    /// Координатор вызывает этот метод на каждом тике `CADisplayLink` с прогрессивно
+    /// уменьшающимся значением `points` по мере коллапса высоты ячейки, получая
+    /// всё более тонкий срез исходного snapshot. Возвращает `nil` только если
+    /// изображение не имеет backing `CGImage`.
     ///
     /// - Parameters:
-    ///   - image: The full-height cell snapshot to crop.
-    ///   - points: Desired height of the cropped image, in logical points. Clamped
-    ///     to a minimum of 1 pixel by the coordinator before this method is called.
+    ///   - image: Полноразмерный snapshot ячейки для обрезки.
+    ///   - points: Желаемая высота обрезанного изображения в логических точках.
+    ///     Координатор ограничивает минимум одним пикселем до вызова этого метода.
     public func cropBottom(of image: UIImage, toPoints points: CGFloat) -> UIImage? {
         guard let cgImage = image.cgImage else { return nil }
         let scale = image.scale

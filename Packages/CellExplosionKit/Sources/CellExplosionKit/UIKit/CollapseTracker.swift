@@ -1,14 +1,15 @@
 import UIKit
 import QuartzCore
 
-/// Drives a single collapse animation and exposes its real-time progress.
+/// Управляет одной анимацией коллапса и предоставляет её прогресс в реальном времени.
 ///
-/// `CollapseTracker` is an internal UIKit-layer utility; it is not part of the
-/// public API. The coordinator creates one tracker per delete batch and shares it
-/// across all cells in that batch so a single `CABasicAnimation` drives all
-/// parallel collapses uniformly. The tracker is kept alive inside
-/// `PendingExplosion` via RAII: its `deinit` removes the `CALayer` from the
-/// container, so cleanup is automatic when the last pending entry is discarded.
+/// `CollapseTracker` — внутренняя утилита UIKit-слоя; она не является частью
+/// публичного API. Координатор создаёт один tracker на пакет удалений и разделяет
+/// его между всеми ячейками этого пакета, чтобы одна `CABasicAnimation` синхронно
+/// управляла всеми параллельными коллапсами. Tracker удерживается живым внутри
+/// `PendingExplosion` через RAII: его `deinit` удаляет `CALayer` из контейнера,
+/// поэтому очистка происходит автоматически при отбрасывании последней
+/// ожидающей записи.
 final class CollapseTracker {
 
     static let initialHeight: CGFloat = 1000
@@ -18,16 +19,17 @@ final class CollapseTracker {
 
     init(container: UIView) {
         self.container = container
-        // The layer is positioned far off-screen so it is never visible; only its
-        // animated `bounds.size.height` value (read via `presentation()`) matters.
+        // Слой располагается далеко за пределами экрана, чтобы никогда не быть
+        // видимым; важно только анимированное значение `bounds.size.height`,
+        // читаемое через `presentation()`.
         layer.frame = CGRect(x: -10_000, y: -10_000, width: 1, height: Self.initialHeight)
         container.layer.addSublayer(layer)
     }
 
-    /// Starts the height-collapse animation and calls `completion` when it finishes.
+    /// Запускает анимацию коллапса высоты и вызывает `completion` по её завершении.
     ///
-    /// The animation runs from `initialHeight` to `0` over `duration` seconds with
-    /// an ease-in timing curve to match the feel of a fast collapse.
+    /// Анимация идёт от `initialHeight` до `0` за `duration` секунд с кривой
+    /// ease-in, соответствующей ощущению быстрого коллапса.
     func start(duration: TimeInterval, completion: @escaping () -> Void) {
         let anim = CABasicAnimation(keyPath: "bounds.size.height")
         anim.fromValue = Self.initialHeight
@@ -45,11 +47,11 @@ final class CollapseTracker {
         CATransaction.commit()
     }
 
-    /// Returns the current animation progress as a fraction in `[0, 1]`.
+    /// Возвращает текущий прогресс анимации как долю в `[0, 1]`.
     ///
-    /// `1.0` means the animation has just started (full height); `0.0` means it
-    /// has completed (zero height). The coordinator multiplies this fraction by the
-    /// cell's original height to compute how many points of cell remain visible.
+    /// `1.0` означает, что анимация только началась (полная высота); `0.0` —
+    /// что она завершена (нулевая высота). Координатор умножает эту долю на
+    /// исходную высоту ячейки, вычисляя, сколько точек ячейки ещё видно.
     func currentFraction() -> CGFloat {
         let presentHeight = layer.presentation()?.bounds.size.height ?? Self.initialHeight
         return max(0, min(1, presentHeight / Self.initialHeight))

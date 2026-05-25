@@ -1,45 +1,45 @@
 import Foundation
 import CoreGraphics
 
-/// Tunable parameters that govern the particle burst and height-collapse animations.
+/// Настраиваемые параметры, управляющие анимациями взрыва частиц и коллапса высоты.
 ///
-/// `ExplosionConfiguration` lives in the Domain layer and is shared by every
-/// other layer: `ParticleFactory` uses it to spawn particles, `ParticlePhysics`
-/// uses it each frame to evolve them, `CellCollapseLayoutController` uses
-/// `collapseDuration`, and `CellExplosionCoordinator` uses `burstThreshold`.
+/// `ExplosionConfiguration` живёт в Domain-слое и используется всеми остальными
+/// слоями: `ParticleFactory` применяет её при создании частиц, `ParticlePhysics`
+/// использует каждый кадр для их эволюции, `CellCollapseLayoutController`
+/// использует `collapseDuration`, а `CellExplosionCoordinator` — `burstThreshold`.
 ///
-/// Start with `.default`, which reproduces the reference demo tuning, and adjust
-/// individual fields as needed. Mutations are applied to the next explosion batch;
-/// in-flight animations always finish with the configuration that was active when
-/// they started.
+/// Начните с `.default`, воспроизводящего настройки референсного демо, и при
+/// необходимости корректируйте отдельные поля. Изменения применяются к следующему
+/// пакету взрывов; анимации в процессе всегда завершаются с той конфигурацией,
+/// которая была активна в момент их запуска.
 public struct ExplosionConfiguration {
-    /// Edge length of each particle square, in logical points. Smaller values
-    /// produce finer-grained bursts at the cost of more particles.
+    /// Длина стороны квадрата каждой частицы, в логических точках. Меньшие значения
+    /// дают более мелкие взрывы, но увеличивают количество частиц.
     public var chunkSize: CGFloat
-    /// Base launch speed of particles, in points per second.
+    /// Базовая скорость запуска частиц, в точках в секунду.
     public var speed: CGFloat
-    /// Acceleration applied to vertical velocity each second, in points per second².
-    /// Negative values pull particles upward (UIKit Y-down convention).
+    /// Ускорение, применяемое к вертикальной скорости каждую секунду, в точках в секунду².
+    /// Отрицательные значения тянут частицы вверх (Y-down конвенция UIKit).
     public var gravity: CGFloat
-    /// Per-frame velocity multiplier in `(0, 1)`. Values close to 1 let particles
-    /// travel farther before stopping; lower values kill momentum quickly.
+    /// Множитель скорости за кадр в диапазоне `(0, 1)`. Значения близкие к 1 позволяют
+    /// частицам лететь дальше перед остановкой; низкие значения быстро гасят импульс.
     public var damping: CGFloat
-    /// Extra upward bias added to each particle's initial vertical velocity, in
-    /// points per second. Produces the characteristic upward "pop" of the burst.
+    /// Дополнительное смещение вверх, добавляемое к начальной вертикальной скорости каждой
+    /// частицы, в точках в секунду. Создаёт характерный «выстрел» вверх при взрыве.
     public var upBias: CGFloat
-    /// Maximum wobble displacement along each axis, in points.
+    /// Максимальное смещение wobble по каждой оси, в точках.
     public var wobbleAmplitude: CGFloat
-    /// Base wobble oscillation frequency, in Hz. Each particle randomises this
-    /// within ±50 % to avoid a uniform wave appearance.
+    /// Базовая частота осцилляции wobble, в Гц. Для каждой частицы она случайно
+    /// варьируется в диапазоне ±50 %, чтобы избежать эффекта однородной волны.
     public var wobbleFrequency: CGFloat
-    /// Random range for particle lifetime, in seconds. Shorter lifetimes make the
-    /// burst dissipate faster; `alphaDecay` is derived from the sampled value.
+    /// Диапазон случайного времени жизни частицы, в секундах. Меньшие значения
+    /// ускоряют рассеивание взрыва; `alphaDecay` вычисляется из выбранного значения.
     public var lifetimeRange: ClosedRange<CGFloat>
-    /// Duration of the cell height-collapse animation, in seconds.
+    /// Продолжительность анимации коллапса высоты ячейки, в секундах.
     public var collapseDuration: TimeInterval
-    /// Remaining visible height of a collapsing cell, in points, at which the
-    /// particle burst is triggered. Lower values delay the burst until the cell is
-    /// nearly gone; higher values burst earlier while more of the cell is visible.
+    /// Остаточная видимая высота сворачивающейся ячейки в точках, при достижении которой
+    /// запускается взрыв частиц. Меньшие значения задерживают взрыв до почти полного
+    /// исчезновения ячейки; большие значения запускают его раньше, когда ячейка ещё хорошо видна.
     public var burstThreshold: CGFloat
 
     public init(
@@ -66,10 +66,10 @@ public struct ExplosionConfiguration {
         self.burstThreshold = burstThreshold
     }
 
-    /// The reference configuration used in the CellExplosionKit demo project.
+    /// Референсная конфигурация, используемая в демо-проекте CellExplosionKit.
     ///
-    /// Use this as a baseline and tune individual properties to match your app's
-    /// visual style.
+    /// Используйте её как базу и настраивайте отдельные свойства под визуальный
+    /// стиль вашего приложения.
     public static let `default`: ExplosionConfiguration = .init(
         chunkSize: 1,
         speed: 60,
