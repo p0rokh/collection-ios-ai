@@ -1,8 +1,31 @@
 import Foundation
 import CoreGraphics
 
+/// Converts a rasterized cell snapshot into an array of `Particle` values.
+///
+/// `ParticleFactory` is an internal Domain utility; it is not part of the public
+/// API. `CellExplosionCoordinator` calls `makeParticles(from:scale:origin:configuration:)`
+/// once per burst, passing the cropped bottom slice of the cell's snapshot image.
+/// The factory tiles the image with non-overlapping `chunkSize × chunkSize` squares
+/// and emits one particle per opaque chunk.
 enum ParticleFactory {
 
+    /// Creates a particle for every opaque chunk in `cgImage`.
+    ///
+    /// The image is rasterized into a CPU-readable pixel buffer once per call.
+    /// Each `chunkSize × chunkSize` tile is represented by the color of its center
+    /// pixel rather than an average — center sampling is fast, avoids blending
+    /// issues near antialiased edges, and is visually indistinguishable at the
+    /// typical chunk sizes used in this package.
+    ///
+    /// - Parameters:
+    ///   - cgImage: The source image, typically a bottom crop of the cell snapshot.
+    ///   - scale: Screen scale factor used to convert between pixel and point coordinates.
+    ///   - origin: Top-left corner of the image in the container's coordinate space, in points.
+    ///   - configuration: Provides `chunkSize`, `speed`, `upBias`, `wobbleAmplitude`,
+    ///     `wobbleFrequency`, and `lifetimeRange` for the spawned particles.
+    /// - Returns: One `Particle` per opaque chunk tile. Transparent tiles (alpha ≤ 30/255)
+    ///   are skipped to avoid spawning invisible ghost particles at image edges.
     static func makeParticles(
         from cgImage: CGImage,
         scale: CGFloat,
@@ -40,10 +63,15 @@ enum ParticleFactory {
         while py < height {
             var px = 0
             while px < width {
+                // Sample the center pixel of each chunk rather than averaging all
+                // pixels in the tile. This is fast and visually equivalent at the
+                // small chunk sizes this package uses.
                 let cx = min(px + chunkPixels / 2, width - 1)
                 let cy = min(py + chunkPixels / 2, height - 1)
                 let i = (cy * width + cx) * 4
                 let a = pixelData[i + 3]
+                // Skip near-transparent pixels (alpha ≤ 30/255) to avoid spawning
+                // invisible ghost particles along antialiased image edges.
                 if a > 30 {
                     let jitter: CGFloat = 0.08
                     let r = max(0, min(1, CGFloat(pixelData[i]) / 255 + CGFloat.random(in: -jitter...jitter)))
