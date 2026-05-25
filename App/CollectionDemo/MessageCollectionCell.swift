@@ -2,14 +2,15 @@
 //  MessageCollectionCell.swift
 //  CollectionDemo
 //
-//  Created by Антон Королев on 24.05.2026.
-//
 
 import UIKit
+import CellExplosionKit
 
 final class MessageCollectionCell: UICollectionViewCell {
 
     static let reuseIdentifier = "MessageCollectionCell"
+
+    private let shrinkController = CellShrinkController()
 
     private let bubbleView: UIView = {
         let view = UIView()
@@ -43,7 +44,6 @@ final class MessageCollectionCell: UICollectionViewCell {
 
     private var leadingConstraint: NSLayoutConstraint!
     private var trailingConstraint: NSLayoutConstraint!
-    private var lockedHeight: CGFloat?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -52,16 +52,25 @@ final class MessageCollectionCell: UICollectionViewCell {
         setupViews()
     }
 
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        if let lockedHeight, bounds.height < lockedHeight {
-            contentView.bounds = CGRect(x: 0, y: 0, width: bounds.width, height: lockedHeight)
-            contentView.center = CGPoint(x: bounds.width / 2, y: bounds.height + lockedHeight / 2)
-        }
-    }
-
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func apply(_ layoutAttributes: UICollectionViewLayoutAttributes) {
+        super.apply(layoutAttributes)
+        shrinkController.apply(layoutAttributes: layoutAttributes)
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        shrinkController.apply(toContentView: contentView, cellBounds: bounds)
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        titleLabel.text = nil
+        dateLabel.text = nil
+        shrinkController.reset()
     }
 
     private func setupViews() {
@@ -110,13 +119,6 @@ final class MessageCollectionCell: UICollectionViewCell {
         }
     }
 
-    override func prepareForReuse() {
-        super.prepareForReuse()
-        titleLabel.text = nil
-        dateLabel.text = nil
-        lockedHeight = nil
-    }
-
     override func preferredLayoutAttributesFitting(_ layoutAttributes: UICollectionViewLayoutAttributes) -> UICollectionViewLayoutAttributes {
         let width = (superview as? UICollectionView)?.bounds.width ?? layoutAttributes.frame.width
         let targetSize = CGSize(width: width, height: 0)
@@ -127,7 +129,10 @@ final class MessageCollectionCell: UICollectionViewCell {
         )
         let height = ceil(size.height)
         layoutAttributes.frame.size = CGSize(width: width, height: height)
-        lockedHeight = height
+        if let collapsible = layoutAttributes as? CollapsibleLayoutAttributes {
+            collapsible.lockedHeight = height
+        }
+        shrinkController.apply(layoutAttributes: layoutAttributes)
         return layoutAttributes
     }
 }

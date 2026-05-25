@@ -2,16 +2,16 @@
 //  MessageFlowLayout.swift
 //  CollectionDemo
 //
-//  Created by Антон Королев on 24.05.2026.
-//
 
 import UIKit
+import CellExplosionKit
 
-class MessageFlowLayout: UICollectionViewFlowLayout {
+final class MessageFlowLayout: UICollectionViewFlowLayout {
 
-    private var deletingIndexPaths: Set<IndexPath> = []
+    let collapseController: CellCollapseLayoutController
 
-    override init() {
+    init(collapseController: CellCollapseLayoutController) {
+        self.collapseController = collapseController
         super.init()
         scrollDirection = .vertical
         estimatedItemSize = CGSize(width: UIScreen.main.bounds.width, height: 60)
@@ -24,6 +24,10 @@ class MessageFlowLayout: UICollectionViewFlowLayout {
         fatalError("init(coder:) has not been implemented")
     }
 
+    override class var layoutAttributesClass: AnyClass {
+        CollapsibleLayoutAttributes.self
+    }
+
     override func shouldInvalidateLayout(forBoundsChange newBounds: CGRect) -> Bool {
         guard let collectionView else { return false }
         return newBounds.width != collectionView.bounds.width
@@ -31,25 +35,16 @@ class MessageFlowLayout: UICollectionViewFlowLayout {
 
     override func prepare(forCollectionViewUpdates updateItems: [UICollectionViewUpdateItem]) {
         super.prepare(forCollectionViewUpdates: updateItems)
-        deletingIndexPaths = Set(updateItems.compactMap {
-            $0.updateAction == .delete ? $0.indexPathBeforeUpdate : nil
-        })
+        collapseController.prepare(updateItems: updateItems)
     }
 
     override func finalizeCollectionViewUpdates() {
         super.finalizeCollectionViewUpdates()
-        deletingIndexPaths.removeAll()
+        collapseController.finalize()
     }
 
     override func finalLayoutAttributesForDisappearingItem(at itemIndexPath: IndexPath) -> UICollectionViewLayoutAttributes? {
-        let attributes = super.finalLayoutAttributesForDisappearingItem(at: itemIndexPath)
-        guard deletingIndexPaths.contains(itemIndexPath), let attributes else {
-            return attributes
-        }
-        var frame = attributes.frame
-        frame.size.height = 0
-        attributes.frame = frame
-        attributes.alpha = 1
-        return attributes
+        let base = super.finalLayoutAttributesForDisappearingItem(at: itemIndexPath)
+        return collapseController.finalAttributes(for: itemIndexPath, base: base)
     }
 }

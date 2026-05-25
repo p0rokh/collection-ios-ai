@@ -2,11 +2,10 @@
 //  MessageViewController.swift
 //  CollectionDemo
 //
-//  Created by Антон Королев on 24.05.2026.
-//
 
 import UIKit
 import SnapKit
+import CellExplosionKit
 
 final class MessageViewController: UIViewController {
 
@@ -33,22 +32,24 @@ final class MessageViewController: UIViewController {
         action: #selector(deleteMultipleHandler)
     )
 
+    private let collapseController = CellCollapseLayoutController(configuration: .default)
+
     private lazy var messageCollectionView: MessageCollectionView = {
-        let collectionView = MessageCollectionView(frame: .zero, collectionViewLayout: MessageFlowLayout())
-        collectionView.dataSource = self
-        return collectionView
+        let layout = MessageFlowLayout(collapseController: collapseController)
+        let cv = MessageCollectionView(frame: .zero, collectionViewLayout: layout)
+        cv.dataSource = self
+        return cv
     }()
 
-    private lazy var explosionView: ExplosionView = {
-        let v = ExplosionView(frame: view.bounds)
-        v.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        return v
-    }()
+    private lazy var renderer = SpriteKitParticleRenderer(configuration: .default)
 
-    private lazy var explosionAnimator = CellExplosionAnimator(
+    private lazy var explosionCoordinator = CellExplosionCoordinator(
         collectionView: messageCollectionView,
-        explosionView: explosionView,
-        container: view
+        container: view,
+        renderer: renderer,
+        layoutController: collapseController,
+        snapshotProvider: FlippedCellSnapshotProvider(),
+        configuration: .default
     )
 
     override func viewDidLoad() {
@@ -58,8 +59,10 @@ final class MessageViewController: UIViewController {
         messageCollectionView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
         }
-        view.addSubview(explosionView)
-        _ = explosionAnimator
+        view.addSubview(renderer.view)
+        renderer.view.frame = view.bounds
+        renderer.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        _ = explosionCoordinator
     }
 
     @objc private func deleteHandler() {
@@ -79,10 +82,11 @@ final class MessageViewController: UIViewController {
     }
 
     private func delete(at indexPaths: [IndexPath]) {
-        explosionAnimator.explodeAndDelete(at: indexPaths) {
-            for path in indexPaths.sorted(by: { $0.item > $1.item }) {
-                dataSource.remove(at: path.item)
-            }
+        for path in indexPaths.sorted(by: { $0.item > $1.item }) {
+            dataSource.remove(at: path.item)
+        }
+        messageCollectionView.performBatchUpdates {
+            messageCollectionView.deleteItems(at: indexPaths)
         }
     }
 }
