@@ -1,6 +1,5 @@
 import Foundation
 import CoreGraphics
-import UIKit
 
 enum ParticleFactory {
 
@@ -51,7 +50,7 @@ enum ParticleFactory {
                     let g = max(0, min(1, CGFloat(pixelData[i + 1]) / 255 + CGFloat.random(in: -jitter...jitter)))
                     let b = max(0, min(1, CGFloat(pixelData[i + 2]) / 255 + CGFloat.random(in: -jitter...jitter)))
                     let alpha = CGFloat(a) / 255
-                    let color = UIColor(red: r, green: g, blue: b, alpha: alpha).cgColor
+                    let color = CGColor(srgbRed: r, green: g, blue: b, alpha: alpha)
                     let angle = CGFloat.random(in: 0...(.pi * 2))
                     let sp = speed * CGFloat.random(in: 0.5...1.3)
                     let lifetime = max(0.05, CGFloat.random(in: lifetimeRange))
