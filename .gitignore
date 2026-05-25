@@ -1,0 +1,32 @@
+# Xcode user-specific
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+
+# Build outputs
+build/
+DerivedData/
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+# Misc
+*.moved-aside
+*.hmap
+*.swp
+.DS_Store
+
+# SPM
+.build/
+.swiftpm/
+
+# CocoaPods
+Pods/
+
+# Carthage
+Carthage/Build/
+
+# fastlane
+fastlane/report.xml
+fastlane/screenshots/**/*.png
+fastlane/test_output
