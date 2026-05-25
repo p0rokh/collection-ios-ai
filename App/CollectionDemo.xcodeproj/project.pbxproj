@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		D05247942FC367380002092A /* SnapKit in Frameworks */ = {isa = PBXBuildFile; productRef = D05247932FC367380002092A /* SnapKit */; };
+		D078DA882FC48D7900C9207F /* CellExplosionKit in Frameworks */ = {isa = PBXBuildFile; productRef = D078DA872FC48D7900C9207F /* CellExplosionKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +42,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D05247942FC367380002092A /* SnapKit in Frameworks */,
+				D078DA882FC48D7900C9207F /* CellExplosionKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -84,6 +86,7 @@
 			name = CollectionDemo;
 			packageProductDependencies = (
 				D05247932FC367380002092A /* SnapKit */,
+				D078DA872FC48D7900C9207F /* CellExplosionKit */,
 			);
 			productName = CollectionDemo;
 			productReference = D052476B2FC3606D0002092A /* CollectionDemo.app */;
@@ -115,6 +118,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				D05247922FC367380002092A /* XCRemoteSwiftPackageReference "SnapKit" */,
+				D078DA862FC48D7900C9207F /* XCLocalSwiftPackageReference "../Packages/CellExplosionKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D052476C2FC3606D0002092A /* Products */;
@@ -355,6 +359,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		D078DA862FC48D7900C9207F /* XCLocalSwiftPackageReference "../Packages/CellExplosionKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../Packages/CellExplosionKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		D05247922FC367380002092A /* XCRemoteSwiftPackageReference "SnapKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -371,6 +382,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = D05247922FC367380002092A /* XCRemoteSwiftPackageReference "SnapKit" */;
 			productName = SnapKit;
+		};
+		D078DA872FC48D7900C9207F /* CellExplosionKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CellExplosionKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
