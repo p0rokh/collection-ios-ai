@@ -39,38 +39,22 @@ public final class CellCollapseLayoutController {
         for itemIndexPath: IndexPath,
         base: UICollectionViewLayoutAttributes?
     ) -> UICollectionViewLayoutAttributes? {
-        guard let base else { return base }
-
-        guard marked.contains(itemIndexPath) else {
-            // Not marked for collapse - if it's a CollapsibleLayoutAttributes, convert back to plain
-            if let collapsible = base as? CollapsibleLayoutAttributes {
-                let plain = UICollectionViewLayoutAttributes(forCellWith: collapsible.indexPath)
-                plain.frame = collapsible.frame
-                plain.alpha = collapsible.alpha
-                return plain
-            }
-            return base
-        }
-
-        guard let collapsible = base as? CollapsibleLayoutAttributes else {
-            // Fallback: layout не настроил layoutAttributesClass — вернём base со схлопнутой
-            // высотой без custom-полей (коллапс будет, но Cell без shrinkController не сможет
-            // прижать content к низу — graceful degradation).
-            let copy = UICollectionViewLayoutAttributes(forCellWith: base.indexPath)
-            copy.frame = base.frame
-            var frame = copy.frame
+        guard marked.contains(itemIndexPath), let base else { return base }
+        if let collapsible = base as? CollapsibleLayoutAttributes {
+            let initialHeight = collapsible.frame.height
+            var frame = collapsible.frame
             frame.size.height = 0
-            copy.frame = frame
-            copy.alpha = 1
-            return copy
+            collapsible.frame = frame
+            collapsible.alpha = 1
+            collapsible.lockedHeight = initialHeight
+            collapsible.collapseProgress = 0
+            return collapsible
         }
-        let initialHeight = collapsible.frame.height
-        var frame = collapsible.frame
+        let copy = base.copy() as! UICollectionViewLayoutAttributes
+        var frame = copy.frame
         frame.size.height = 0
-        collapsible.frame = frame
-        collapsible.alpha = 1
-        collapsible.lockedHeight = initialHeight
-        collapsible.collapseProgress = 0
-        return collapsible
+        copy.frame = frame
+        copy.alpha = 1
+        return copy
     }
 }

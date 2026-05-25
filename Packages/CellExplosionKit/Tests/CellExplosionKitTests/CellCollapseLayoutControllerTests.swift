@@ -95,6 +95,7 @@ final class CellCollapseLayoutControllerTests: XCTestCase {
         controller.finalize()
 
         let result = controller.finalAttributes(for: IndexPath(item: 0, section: 0), base: base)
-        XCTAssertFalse(result is CollapsibleLayoutAttributes, "after finalize, mark cleared, base returned")
+        // after finalize, marked set is cleared — base is returned untouched (height not collapsed)
+        XCTAssertEqual(result?.frame.height, 60)
     }
 }
