@@ -21,11 +21,14 @@ public final class CellExplosionCoordinator {
         let image: UIImage
         let originalFrame: CGRect
         let initialHeight: CGFloat
+        // RAII: tracker's CALayer is removed from the container in its deinit,
+        // tying tracker lifetime to its owning entry in pendingExplosions.
         let tracker: CollapseTracker
     }
 
     private var pendingExplosions: [PendingExplosion] = []
     private var displayLink: CADisplayLink?
+    private var displayLinkProxy: DisplayLinkProxy?
 
     public init(
         collectionView: UICollectionView,
@@ -80,19 +83,20 @@ public final class CellExplosionCoordinator {
 
     private func startDisplayLinkIfNeeded() {
         guard displayLink == nil else { return }
-        let link = CADisplayLink(target: self, selector: #selector(tick))
+        let proxy = DisplayLinkProxy(target: self)
+        let link = CADisplayLink(target: proxy, selector: #selector(DisplayLinkProxy.tick))
         link.add(to: .main, forMode: .common)
         displayLink = link
+        displayLinkProxy = proxy
     }
 
-    @objc private func tick() {
+    fileprivate func handleDisplayLinkTick() {
         processTick(fractionOverride: nil)
     }
 
     private func processTick(fractionOverride: CGFloat?) {
         guard !pendingExplosions.isEmpty else {
-            displayLink?.invalidate()
-            displayLink = nil
+            invalidateDisplayLink()
             return
         }
 
@@ -132,9 +136,14 @@ public final class CellExplosionCoordinator {
         }
 
         if pendingExplosions.isEmpty {
-            displayLink?.invalidate()
-            displayLink = nil
+            invalidateDisplayLink()
         }
+    }
+
+    private func invalidateDisplayLink() {
+        displayLink?.invalidate()
+        displayLink = nil
+        displayLinkProxy = nil
     }
 }
 
@@ -147,10 +156,28 @@ extension CellExplosionCoordinator: CellCollapseLayoutControllerDelegate {
     }
 }
 
-// MARK: - Test hooks
+/// Breaks the CADisplayLink → coordinator retain cycle. The runloop holds the
+/// proxy strongly, but the proxy only weakly references the coordinator, so
+/// dismissing the host view controller mid-animation deallocates the
+/// coordinator on schedule (the proxy then forwards no-op ticks until the next
+/// invalidation).
+private final class DisplayLinkProxy {
+    weak var target: CellExplosionCoordinator?
+
+    init(target: CellExplosionCoordinator) {
+        self.target = target
+    }
+
+    @objc func tick() {
+        target?.handleDisplayLinkTick()
+    }
+}
+
+#if DEBUG
 extension CellExplosionCoordinator {
     var pendingExplosionsForTesting: [PendingExplosion] { pendingExplosions }
     func tickForTesting(fractionOverride: CGFloat) {
         processTick(fractionOverride: fractionOverride)
     }
 }
+#endif
