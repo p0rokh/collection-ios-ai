@@ -85,9 +85,76 @@ final class MessageViewController: UIViewController {
         for path in indexPaths.sorted(by: { $0.item > $1.item }) {
             dataSource.remove(at: path.item)
         }
-        messageCollectionView.performBatchUpdates {
-            messageCollectionView.deleteItems(at: indexPaths)
+
+        // Определяем какие cells будут двигаться. Двигаются те, у кого старый
+        // item > минимального удалённого и сами они не в deleted set.
+        let minDeletedItem = indexPaths.map(\.item).min() ?? 0
+        let deletedSet = Set(indexPaths)
+        let movingCells = messageCollectionView.visibleCells.filter { cell in
+            guard let p = messageCollectionView.indexPath(for: cell) else { return false }
+            return p.item > minDeletedItem && !deletedSet.contains(p)
         }
+
+        // Единый бесшовный таймлайн на трёх синхронных частях:
+        //  1) UICollectionView collapse — задаём через UIView.animate (только
+        //     UIKit-уровень реально форсит duration deleteItems). Длительность =
+        //     totalDuration × collapseFraction.
+        //  2) CollapseTracker внутри пакета — синхронизируем, передав ту же
+        //     duration в coordinator.configuration.collapseDuration (иначе burst
+        //     рассчитается по 0.3s по умолчанию и опоздает).
+        //  3) CAKeyframeAnimation на transform.translation.y у двигающихся cells —
+        //     длится totalDuration, до collapseFraction остаётся 0, затем один
+        //     отскок вверх и обратно. Запускаем animation ДО UIView.animate в
+        //     том же RunLoop turn — обе стартуют синхронно.
+        let totalDuration: CFTimeInterval = 0.33
+        let collapseFraction: Double = 0.45
+        let collapseDuration = totalDuration * collapseFraction
+
+        explosionCoordinator.configuration.collapseDuration = collapseDuration
+        // При быстром коллапсе (≈100мс) и burstThreshold=12 окно срабатывания
+        // получается ~8мс, меньше шага CADisplayLink (~16.7мс) — burst иногда
+        // «проскакивает» между тиками. Поднимаем порог, чтобы окно стало шире
+        // и burst срабатывал ещё пока cell видна, в районе её половинной высоты.
+        explosionCoordinator.configuration.burstThreshold = 30
+
+        let bounce = CAKeyframeAnimation(keyPath: "transform.translation.y")
+        bounce.values   = [0, 0, 4.0, 0, 0]
+        bounce.keyTimes = [
+            0,
+            NSNumber(value: collapseFraction),
+            NSNumber(value: collapseFraction + 0.10),
+            NSNumber(value: collapseFraction + 0.25),
+            1,
+        ]
+        bounce.duration = totalDuration
+        // Per-segment curves: точное соответствие моментов keyframe реальному
+        // времени (глобальный timingFunction сделал бы нелинейную развёртку).
+        //   1) до приземления — linear (значение всё равно 0).
+        //   2) подъём 0 → 4.0 — easeOut (быстро от наковальни, тормоз в пике).
+        //   3) падение 4.0 → 0 — easeIn (с пика медленно, к низу — gravity).
+        //   4) после приземления — linear, держим 0.
+        bounce.timingFunctions = [
+            CAMediaTimingFunction(name: .linear),
+            CAMediaTimingFunction(name: .easeOut),
+            CAMediaTimingFunction(name: .easeIn),
+            CAMediaTimingFunction(name: .linear),
+        ]
+
+        for cell in movingCells {
+            cell.layer.add(bounce, forKey: "anvil-bounce")
+        }
+
+        UIView.animate(
+            withDuration: collapseDuration,
+            delay: 0,
+            options: [.curveEaseIn],
+            animations: {
+                self.messageCollectionView.performBatchUpdates {
+                    self.messageCollectionView.deleteItems(at: indexPaths)
+                }
+            },
+            completion: nil
+        )
     }
 }
 
