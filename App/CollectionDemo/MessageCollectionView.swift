@@ -44,6 +44,10 @@ final class MessageCollectionView: UICollectionView {
         renderer.view.frame = container.bounds
         renderer.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     }
+    
+    override func deleteItems(at indexPaths: [IndexPath]) {
+        super.deleteItems(at: indexPaths)
+    }
 
     /// Удаляет элементы с анимацией взрыва. Data source должен быть обновлён до вызова.
     func delete(at indexPaths: [IndexPath]) {
