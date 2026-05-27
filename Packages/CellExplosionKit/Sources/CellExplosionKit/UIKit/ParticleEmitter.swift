@@ -19,7 +19,6 @@ final class ParticleEmitter {
     private var displayLinkProxy: DisplayLinkProxy?
 
     var configuration: ExplosionConfiguration
-    var pendingCount: Int { pendingExplosions.count }
 
     init(renderer: ParticleRenderer, snapshotProvider: CellSnapshotProvider, container: UIView, configuration: ExplosionConfiguration = .default) {
         self.renderer = renderer
@@ -103,17 +102,13 @@ final class ParticleEmitter {
     }
 }
 
-// MARK: - Testing hooks
-
+#if DEBUG
 extension ParticleEmitter {
+    var pendingCountForTesting: Int { pendingExplosions.count }
+    var pendingExplosionsForTesting: [PendingExplosion] { pendingExplosions }
     func tickForTesting(fractionOverride: CGFloat, configuration: ExplosionConfiguration) {
         tick(fractionOverride: fractionOverride, configuration: configuration)
     }
-}
-
-#if DEBUG
-extension ParticleEmitter {
-    var pendingExplosionsForTesting: [PendingExplosion] { pendingExplosions }
 }
 #endif
 

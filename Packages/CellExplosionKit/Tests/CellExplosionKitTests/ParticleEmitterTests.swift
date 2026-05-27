@@ -41,7 +41,7 @@ final class ParticleEmitterTests: XCTestCase {
         emitter.tickForTesting(fractionOverride: 0.7, configuration: .default)
 
         XCTAssertEqual(renderer.receivedBatches.count, 0)
-        XCTAssertEqual(emitter.pendingCount, 1)
+        XCTAssertEqual(emitter.pendingCountForTesting, 1)
     }
 
     func test_tick_belowThreshold_burstsAndClears() {
@@ -64,6 +64,6 @@ final class ParticleEmitterTests: XCTestCase {
 
         XCTAssertEqual(renderer.receivedBatches.count, 1)
         XCTAssertFalse(renderer.receivedBatches[0].isEmpty)
-        XCTAssertEqual(emitter.pendingCount, 0)
+        XCTAssertEqual(emitter.pendingCountForTesting, 0)
     }
 }

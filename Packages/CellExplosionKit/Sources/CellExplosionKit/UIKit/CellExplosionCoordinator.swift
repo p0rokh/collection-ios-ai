@@ -72,7 +72,6 @@ public final class CellExplosionCoordinator {
 
     private weak var collectionView: UICollectionView?
     private weak var container: UIView?
-    private let renderer: ParticleRenderer
     private let layoutController: CellCollapseLayoutController
     private let snapshotProvider: CellSnapshotProvider
     private let emitter: ParticleEmitter
@@ -104,7 +103,6 @@ public final class CellExplosionCoordinator {
     ) {
         self.collectionView = collectionView
         self.container = container
-        self.renderer = renderer
         self.layoutController = layoutController
         self.snapshotProvider = snapshotProvider
         self.configuration = configuration
