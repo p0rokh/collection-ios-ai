@@ -1,5 +1,4 @@
 import UIKit
-import QuartzCore
 
 /// Центральный оркестратор эффекта взрыва ячейки и коллапса высоты.
 ///
@@ -60,7 +59,9 @@ public final class CellExplosionCoordinator {
     public var shouldExplode: (IndexPath) -> Bool = { _ in true }
 
     /// Параметры физики и тайминга, применяемые к следующему пакету взрывов.
-    public var configuration: ExplosionConfiguration
+    public var configuration: ExplosionConfiguration {
+        didSet { emitter.configuration = configuration }
+    }
 
     /// Источник ячеек по index path. По умолчанию использует `collectionView.cellForItem(at:)`.
     ///
@@ -74,19 +75,7 @@ public final class CellExplosionCoordinator {
     private let renderer: ParticleRenderer
     private let layoutController: CellCollapseLayoutController
     private let snapshotProvider: CellSnapshotProvider
-
-    struct PendingExplosion {
-        let image: UIImage
-        let originalFrame: CGRect
-        let initialHeight: CGFloat
-        // RAII: CALayer tracker-а удаляется из контейнера в его deinit,
-        // привязывая время жизни tracker-а к владеющей им записи в pendingExplosions.
-        let tracker: CollapseTracker
-    }
-
-    private var pendingExplosions: [PendingExplosion] = []
-    private var displayLink: CADisplayLink?
-    private var displayLinkProxy: DisplayLinkProxy?
+    private let emitter: ParticleEmitter
 
     /// Создаёт координатор и регистрирует его как delegate layout-контроллера.
     ///
@@ -122,11 +111,13 @@ public final class CellExplosionCoordinator {
         self.cellProvider = { [weak collectionView] path in
             collectionView?.cellForItem(at: path)
         }
+        self.emitter = ParticleEmitter(
+            renderer: renderer,
+            snapshotProvider: snapshotProvider,
+            container: container,
+            configuration: configuration
+        )
         layoutController.delegate = self
-    }
-
-    deinit {
-        displayLink?.invalidate()
     }
 
     /// Вызывайте после обновления data source. Берёт на себя всю анимацию удаления:
@@ -203,7 +194,7 @@ public final class CellExplosionCoordinator {
             guard let cell = cellProvider(path),
                   let image = snapshotProvider.snapshot(of: cell) else { continue }
             let frameInContainer = cell.convert(cell.bounds, to: container)
-            pendingExplosions.append(PendingExplosion(
+            emitter.addExplosion(ParticleEmitter.PendingExplosion(
                 image: image,
                 originalFrame: frameInContainer,
                 initialHeight: cell.bounds.height,
@@ -215,81 +206,8 @@ public final class CellExplosionCoordinator {
         guard !ready.isEmpty else { return }
         layoutController.markCollapsing(at: ready)
         tracker.start(duration: configuration.collapseDuration) {}
-        startDisplayLinkIfNeeded()
     }
 
-    private func startDisplayLinkIfNeeded() {
-        guard displayLink == nil else { return }
-        let proxy = DisplayLinkProxy(target: self)
-        let link = CADisplayLink(target: proxy, selector: #selector(DisplayLinkProxy.tick))
-        link.add(to: .main, forMode: .common)
-        displayLink = link
-        displayLinkProxy = proxy
-    }
-
-    fileprivate func handleDisplayLinkTick() {
-        processTick(fractionOverride: nil)
-    }
-
-    /// Обрабатывает один тик `CADisplayLink`: проверяет каждый ожидающий взрыв,
-    /// генерирует частицы и инвалидирует display link, когда все записи обработаны.
-    ///
-    /// `max(1, currentHeight)` защищает от передачи нулевой высоты в
-    /// `cropBottom(of:toPoints:)`, что привело бы к нулевой обрезке и пустому
-    /// пакету частиц.
-    private func processTick(fractionOverride: CGFloat?) {
-        guard !pendingExplosions.isEmpty else {
-            invalidateDisplayLink()
-            return
-        }
-
-        var stillPending: [PendingExplosion] = []
-        var allParticles: [Particle] = []
-
-        for entry in pendingExplosions {
-            let fraction = fractionOverride ?? entry.tracker.currentFraction()
-            let currentHeight = entry.initialHeight * fraction
-            if currentHeight <= configuration.burstThreshold {
-                // Ограничиваем минимум 1 точкой, чтобы cropBottom никогда не получал
-                // нулевую высоту, которая привела бы к пустой (или nil) обрезке.
-                let h = max(1, currentHeight)
-                let currentFrame = CGRect(
-                    x: entry.originalFrame.origin.x,
-                    y: entry.originalFrame.maxY - h,
-                    width: entry.originalFrame.width,
-                    height: h
-                )
-                if let cropped = snapshotProvider.cropBottom(of: entry.image, toPoints: h),
-                   let cg = cropped.cgImage {
-                    let parts = ParticleFactory.makeParticles(
-                        from: cg,
-                        scale: cropped.scale,
-                        origin: currentFrame.origin,
-                        configuration: configuration
-                    )
-                    allParticles.append(contentsOf: parts)
-                }
-            } else {
-                stillPending.append(entry)
-            }
-        }
-        pendingExplosions = stillPending
-
-        if !allParticles.isEmpty {
-            container?.bringSubviewToFront(renderer.view)
-            renderer.addParticles(allParticles)
-        }
-
-        if pendingExplosions.isEmpty {
-            invalidateDisplayLink()
-        }
-    }
-
-    private func invalidateDisplayLink() {
-        displayLink?.invalidate()
-        displayLink = nil
-        displayLinkProxy = nil
-    }
 }
 
 extension CellExplosionCoordinator: CellCollapseLayoutControllerDelegate {
@@ -301,27 +219,13 @@ extension CellExplosionCoordinator: CellCollapseLayoutControllerDelegate {
     }
 }
 
-/// Разрывает цикл удержания CADisplayLink → coordinator. Runloop держит proxy
-/// сильно, но proxy ссылается на coordinator только слабо, поэтому закрытие
-/// host view controller в середине анимации освобождает coordinator вовремя
-/// (proxy продолжает пересылать no-op тики до следующей инвалидации).
-private final class DisplayLinkProxy {
-    weak var target: CellExplosionCoordinator?
-
-    init(target: CellExplosionCoordinator) {
-        self.target = target
-    }
-
-    @objc func tick() {
-        target?.handleDisplayLinkTick()
-    }
-}
-
 #if DEBUG
 extension CellExplosionCoordinator {
-    var pendingExplosionsForTesting: [PendingExplosion] { pendingExplosions }
+    var pendingExplosionsForTesting: [ParticleEmitter.PendingExplosion] {
+        emitter.pendingExplosionsForTesting
+    }
     func tickForTesting(fractionOverride: CGFloat) {
-        processTick(fractionOverride: fractionOverride)
+        emitter.tickForTesting(fractionOverride: fractionOverride, configuration: configuration)
     }
 }
 #endif
