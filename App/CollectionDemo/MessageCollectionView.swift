@@ -11,7 +11,6 @@ import CellExplosionKit
 final class MessageCollectionView: UICollectionView {
 
     private let collapseController: CellCollapseLayoutController
-    private lazy var renderer = SpriteKitParticleRenderer(configuration: .default)
     private var explosionCoordinator: CellExplosionCoordinator?
 
     init() {
@@ -32,17 +31,17 @@ final class MessageCollectionView: UICollectionView {
     /// `container` — корневой вид контроллера: renderer.view добавляется поверх него,
     /// чтобы частицы не обрезались границами коллекции.
     func configure(container: UIView) {
-        explosionCoordinator = CellExplosionCoordinator(
+        let components = CellExplosionKitAssembler.assemble(
             collectionView: self,
             container: container,
-            renderer: renderer,
             layoutController: collapseController,
             snapshotProvider: FlippedCellSnapshotProvider(),
             configuration: .default
         )
-        container.addSubview(renderer.view)
-        renderer.view.frame = container.bounds
-        renderer.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        explosionCoordinator = components.coordinator
+        container.addSubview(components.rendererView)
+        components.rendererView.frame = container.bounds
+        components.rendererView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     }
     
     override func deleteItems(at indexPaths: [IndexPath]) {
