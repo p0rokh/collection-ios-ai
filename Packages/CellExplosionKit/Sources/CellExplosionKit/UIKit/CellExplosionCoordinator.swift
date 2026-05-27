@@ -129,6 +129,60 @@ public final class CellExplosionCoordinator {
         displayLink?.invalidate()
     }
 
+    /// Вызывайте после обновления data source. Берёт на себя всю анимацию удаления:
+    /// вычисляет тайминги из `configuration`, запускает bounce соседних ячеек,
+    /// оборачивает `deleteItems` в `UIView.animate + performBatchUpdates`.
+    ///
+    /// - Parameter indexPaths: Index path элементов, уже удалённых из data source.
+    public func performDeletion(at indexPaths: [IndexPath]) {
+        guard let collectionView else { return }
+
+        let totalDuration    = configuration.totalAnimationDuration
+        let collapseFraction = configuration.collapseTimingFraction
+        let collapseDuration = configuration.collapseDuration
+
+        let minDeletedItem = indexPaths.map(\.item).min() ?? 0
+        let deletedSet     = Set(indexPaths)
+        let movingCells = collectionView.visibleCells.filter { cell in
+            guard let p = collectionView.indexPath(for: cell) else { return false }
+            return p.item > minDeletedItem && !deletedSet.contains(p)
+        }
+
+        // Bounce запускаем ДО UIView.animate — обе анимации должны стартовать
+        // в одном RunLoop-тёрне, иначе bounce окажется позади по времени.
+        let bounce            = CAKeyframeAnimation(keyPath: "transform.translation.y")
+        bounce.values         = [0, 0, 4.0, 0, 0]
+        bounce.keyTimes       = [
+            0,
+            NSNumber(value: collapseFraction),
+            NSNumber(value: collapseFraction + 0.10),
+            NSNumber(value: collapseFraction + 0.25),
+            1,
+        ]
+        bounce.duration       = totalDuration
+        bounce.timingFunctions = [
+            CAMediaTimingFunction(name: .linear),
+            CAMediaTimingFunction(name: .easeOut),
+            CAMediaTimingFunction(name: .easeIn),
+            CAMediaTimingFunction(name: .linear),
+        ]
+        for cell in movingCells {
+            cell.layer.add(bounce, forKey: "anvil-bounce")
+        }
+
+        UIView.animate(
+            withDuration: collapseDuration,
+            delay: 0,
+            options: [.curveEaseIn],
+            animations: {
+                collectionView.performBatchUpdates {
+                    collectionView.deleteItems(at: indexPaths)
+                }
+            },
+            completion: nil
+        )
+    }
+
     /// Обрабатывает подтверждённый пакет удалений после фильтрации через `isEnabled` и `shouldExplode`.
     ///
     /// Один `CollapseTracker` разделяется на весь пакет, чтобы одна `CABasicAnimation`

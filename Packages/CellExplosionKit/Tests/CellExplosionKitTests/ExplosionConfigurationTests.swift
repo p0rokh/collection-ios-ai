@@ -13,8 +13,10 @@ final class ExplosionConfigurationTests: XCTestCase {
         XCTAssertEqual(config.wobbleAmplitude, 300)
         XCTAssertEqual(config.wobbleFrequency, 0.85)
         XCTAssertEqual(config.lifetimeRange, 0.1...0.8)
-        XCTAssertEqual(config.collapseDuration, 0.3)
-        XCTAssertEqual(config.burstThreshold, 12)
+        XCTAssertEqual(config.collapseDuration, 0.33 * 0.45, accuracy: 0.001)
+        XCTAssertEqual(config.burstThreshold, 30)
+        XCTAssertEqual(config.totalAnimationDuration, 0.33, accuracy: 0.001)
+        XCTAssertEqual(config.collapseTimingFraction, 0.45, accuracy: 0.001)
     }
 
     func test_isValueType_mutationDoesNotAffectOriginal() {

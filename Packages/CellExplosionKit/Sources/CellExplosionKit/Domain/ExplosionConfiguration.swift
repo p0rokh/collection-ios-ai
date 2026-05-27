@@ -35,12 +35,16 @@ public struct ExplosionConfiguration {
     /// Диапазон случайного времени жизни частицы, в секундах. Меньшие значения
     /// ускоряют рассеивание взрыва; `alphaDecay` вычисляется из выбранного значения.
     public var lifetimeRange: ClosedRange<CGFloat>
-    /// Продолжительность анимации коллапса высоты ячейки, в секундах.
-    public var collapseDuration: TimeInterval
     /// Остаточная видимая высота сворачивающейся ячейки в точках, при достижении которой
     /// запускается взрыв частиц. Меньшие значения задерживают взрыв до почти полного
     /// исчезновения ячейки; большие значения запускают его раньше, когда ячейка ещё хорошо видна.
     public var burstThreshold: CGFloat
+    /// Полная продолжительность составной анимации удаления: коллапс + отскок, в секундах.
+    public var totalAnimationDuration: TimeInterval
+    /// Доля от `totalAnimationDuration`, отводимая фазе коллапса UICollectionView.
+    public var collapseTimingFraction: Double
+    /// Продолжительность фазы коллапса: `totalAnimationDuration × collapseTimingFraction`.
+    public var collapseDuration: TimeInterval { totalAnimationDuration * collapseTimingFraction }
 
     public init(
         chunkSize: CGFloat,
@@ -51,8 +55,9 @@ public struct ExplosionConfiguration {
         wobbleAmplitude: CGFloat,
         wobbleFrequency: CGFloat,
         lifetimeRange: ClosedRange<CGFloat>,
-        collapseDuration: TimeInterval,
-        burstThreshold: CGFloat
+        burstThreshold: CGFloat,
+        totalAnimationDuration: TimeInterval,
+        collapseTimingFraction: Double
     ) {
         self.chunkSize = chunkSize
         self.speed = speed
@@ -62,8 +67,9 @@ public struct ExplosionConfiguration {
         self.wobbleAmplitude = wobbleAmplitude
         self.wobbleFrequency = wobbleFrequency
         self.lifetimeRange = lifetimeRange
-        self.collapseDuration = collapseDuration
         self.burstThreshold = burstThreshold
+        self.totalAnimationDuration = totalAnimationDuration
+        self.collapseTimingFraction = collapseTimingFraction
     }
 
     /// Референсная конфигурация, используемая в демо-проекте CellExplosionKit.
@@ -79,7 +85,8 @@ public struct ExplosionConfiguration {
         wobbleAmplitude: 300,
         wobbleFrequency: 0.85,
         lifetimeRange: 0.1...0.8,
-        collapseDuration: 0.3,
-        burstThreshold: 12
+        burstThreshold: 30,
+        totalAnimationDuration: 0.33,
+        collapseTimingFraction: 0.45
     )
 }

@@ -2,7 +2,7 @@
 
 ## Context
 
-Вся логика анимации удаления сейчас в `MessageViewController.delete(at:)`: тайминги, bounce, `UIView.animate + performBatchUpdates + deleteItems`. Это не переиспользуемо. Нужно вынести в `CellExplosionCoordinator.performDeletion(at:)` так, чтобы анимация осталась идентичной, а API не мутировал конфигурацию как побочный эффект.
+Вся логика анимации удаления сейчас в `MessageViewController.delete(at:)` (строки 84–158): тайминги, bounce, `UIView.animate + performBatchUpdates + deleteItems`. Это не переиспользуемо. Нужно вынести в `CellExplosionCoordinator.performDeletion(at:)` так, чтобы анимация осталась идентичной, а API не мутировал конфигурацию как побочный эффект.
 
 **Ключевое архитектурное решение:** `collapseDuration` становится **вычисляемым свойством** `totalAnimationDuration * collapseTimingFraction`. Тогда `performDeletion` вообще не мутирует `configuration` — читает корректные значения напрямую. `handleDeletions` (делегатный путь) тоже получает правильный `collapseDuration` автоматически.
 
@@ -17,16 +17,17 @@
 
 | Файл | Изменение |
 |---|---|
-| `Packages/CellExplosionKit/Sources/.../Domain/ExplosionConfiguration.swift` | +2 stored поля, `collapseDuration` → computed, `burstThreshold` default → 30 |
-| `Packages/CellExplosionKit/Sources/.../UIKit/CellExplosionCoordinator.swift` | +метод `performDeletion(at:)` |
+| `Packages/CellExplosionKit/Sources/CellExplosionKit/Domain/ExplosionConfiguration.swift` | `collapseDuration` → computed, +2 stored поля, `burstThreshold` default → 30 |
+| `Packages/CellExplosionKit/Sources/CellExplosionKit/UIKit/CellExplosionCoordinator.swift` | +публичный метод `performDeletion(at:)` |
 | `App/CollectionDemo/MessageViewController.swift` | упростить `delete(at:)` до 2 строк |
-| `Packages/CellExplosionKit/Tests/.../ExplosionConfigurationTests.swift` | обновить ассерты |
+| `Packages/CellExplosionKit/Tests/CellExplosionKitTests/ExplosionConfigurationTests.swift` | обновить ассерты |
+| `Packages/CellExplosionKit/Tests/CellExplosionKitTests/CellExplosionCoordinatorTests.swift` | **обновить тест на порог** (иначе сломается) |
 
 ---
 
 ## Step 1 — ExplosionConfiguration.swift
 
-### Добавить два stored поля (после `burstThreshold`):
+### Добавить два stored поля (вместо `collapseDuration`):
 
 ```swift
 /// Полная продолжительность составной анимации удаления: коллапс + отскок, в секундах.
@@ -36,16 +37,14 @@ public var totalAnimationDuration: TimeInterval
 public var collapseTimingFraction: Double
 ```
 
-### Изменить `collapseDuration` на computed:
+### Изменить `collapseDuration` на computed (убрать из stored полей и init):
 
 ```swift
 /// Продолжительность фазы коллапса: `totalAnimationDuration × collapseTimingFraction`.
 public var collapseDuration: TimeInterval { totalAnimationDuration * collapseTimingFraction }
 ```
 
-Убрать `collapseDuration` из `init` (он больше не stored).
-
-### Обновить `init` — убрать `collapseDuration:`, добавить два новых параметра после `burstThreshold`:
+### Обновить `init` — убрать `collapseDuration:`, добавить два новых параметра:
 
 ```swift
 public init(
@@ -62,6 +61,8 @@ public init(
     collapseTimingFraction: Double
 )
 ```
+
+> Нет прямых вызовов `ExplosionConfiguration(...)` вне `.default` — сигнатура меняется безопасно.
 
 ### Обновить `.default`:
 
@@ -81,13 +82,13 @@ public static let `default`: ExplosionConfiguration = .init(
 )
 ```
 
-> **Почему `burstThreshold: 30` в `.default`:** при `collapseDuration≈148ms` с порогом 12pt окно срабатывания ≈8ms — меньше одного тика CADisplayLink (16.7ms). Порог 30 расширяет окно до ~30ms. Пользователь всегда может переопределить `burstThreshold` для своей конфигурации — `performDeletion` его не трогает.
+> **Почему `burstThreshold: 30`:** при `collapseDuration≈148ms` с порогом 12pt окно срабатывания ≈8ms — меньше одного тика CADisplayLink (16.7ms). Порог 30 расширяет окно до ~30ms.
 
 ---
 
 ## Step 2 — CellExplosionCoordinator.swift: метод performDeletion
 
-Добавить публичный метод (после `init`, до `handleDeletions`). Никаких мутаций `configuration` — только чтение:
+Добавить публичный метод после `init`, до `handleDeletions`. Никаких мутаций `configuration`. **Контракт: data source должен быть обновлён до вызова.**
 
 ```swift
 /// Вызывайте после обновления data source. Берёт на себя всю анимацию удаления:
@@ -100,9 +101,8 @@ public func performDeletion(at indexPaths: [IndexPath]) {
 
     let totalDuration    = configuration.totalAnimationDuration
     let collapseFraction = configuration.collapseTimingFraction
-    let collapseDuration = configuration.collapseDuration  // computed: totalDuration * collapseFraction
+    let collapseDuration = configuration.collapseDuration  // totalDuration * collapseFraction
 
-    // Moving cells: видимые, с item > minDeleted, не из удаляемого множества
     let minDeletedItem = indexPaths.map(\.item).min() ?? 0
     let deletedSet     = Set(indexPaths)
     let movingCells = collectionView.visibleCells.filter { cell in
@@ -110,8 +110,6 @@ public func performDeletion(at indexPaths: [IndexPath]) {
         return p.item > minDeletedItem && !deletedSet.contains(p)
     }
 
-    // Bounce animation — запускаем ДО UIView.animate (тот же RunLoop turn),
-    // иначе bounce стартует позже и не совпадёт с коллапсом.
     let bounce            = CAKeyframeAnimation(keyPath: "transform.translation.y")
     bounce.values         = [0, 0, 4.0, 0, 0]
     bounce.keyTimes       = [
@@ -146,7 +144,7 @@ public func performDeletion(at indexPaths: [IndexPath]) {
 }
 ```
 
-> Никаких новых импортов: `UIKit` и `QuartzCore` уже есть.
+> Новых импортов не нужно: `UIKit` и `QuartzCore` уже есть.
 
 ---
 
@@ -169,7 +167,7 @@ private func delete(at indexPaths: [IndexPath]) {
 
 ## Step 4 — ExplosionConfigurationTests.swift: обновить ассерты
 
-В `test_default_hasExpectedValues` заменить ассерт на `collapseDuration` и `burstThreshold`:
+В `test_default_hasExpectedValues` заменить:
 
 ```swift
 // Было:
@@ -183,16 +181,49 @@ XCTAssertEqual(config.totalAnimationDuration, 0.33, accuracy: 0.001)
 XCTAssertEqual(config.collapseTimingFraction, 0.45, accuracy: 0.001)
 ```
 
-В `test_isValueType_mutationDoesNotAffectOriginal` — без изменений (мутирует `speed`, computed `collapseDuration` не затрагивает).
+`test_isValueType_mutationDoesNotAffectOriginal` — без изменений (мутирует `speed`).
+
+---
+
+## Step 5 — CellExplosionCoordinatorTests.swift: исправить сломанный тест ⚠️
+
+**Критично: план изначально этот шаг пропустил.** После изменения `burstThreshold` в `.default` с 12 на 30 тест `test_tick_aboveThreshold_doesNotBurst` сломается:
+
+```
+fraction=0.5 → currentHeight = 60 × 0.5 = 30
+условие: 30 <= burstThreshold(30) → TRUE → burst сработает → XCTAssertEqual(cropCalls, 0) упадёт
+```
+
+В `test_tick_aboveThreshold_doesNotBurst` изменить `fractionOverride: 0.5` → `fractionOverride: 0.6` и обновить комментарий:
+
+```swift
+// Было:
+// fraction=0.5 → currentHeight = 30 > threshold(12)
+coordinator.tickForTesting(fractionOverride: 0.5)
+
+// Станет:
+// fraction=0.6 → currentHeight = 36 > threshold(30)
+coordinator.tickForTesting(fractionOverride: 0.6)
+```
+
+В `test_tick_belowThreshold_burstsAndClearsPending` обновить только комментарий (логика остаётся верной, `6 < 30` ✓):
+
+```swift
+// Было: // эмулируем тик с fraction=0.1 → currentHeight = 60*0.1 = 6 < threshold(12)
+// Станет: // эмулируем тик с fraction=0.1 → currentHeight = 60*0.1 = 6 < threshold(30)
+```
 
 ---
 
 ## Порядок исполнения
 
-1. `ExplosionConfiguration.swift` — computed `collapseDuration`, новые поля, новый `.default`
-2. `CellExplosionCoordinator.swift` — добавить `performDeletion(at:)`
-3. `MessageViewController.swift` — упростить `delete(at:)`
-4. `ExplosionConfigurationTests.swift` — обновить ассерты
+```
+1. ExplosionConfiguration.swift     — computed collapseDuration, новые поля, новый .default
+2. CellExplosionCoordinator.swift   — добавить performDeletion(at:)
+3. MessageViewController.swift      — упростить delete(at:)
+4. ExplosionConfigurationTests.swift — обновить ассерты
+5. CellExplosionCoordinatorTests.swift — исправить порог в тесте
+```
 
 ---
 

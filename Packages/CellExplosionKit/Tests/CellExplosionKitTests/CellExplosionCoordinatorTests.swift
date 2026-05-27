@@ -169,7 +169,7 @@ final class CellExplosionCoordinatorTests: XCTestCase {
         ])
         XCTAssertEqual(coordinator.pendingExplosionsForTesting.count, 1)
 
-        // эмулируем тик с fraction=0.1 → currentHeight = 60*0.1 = 6 < threshold(12)
+        // эмулируем тик с fraction=0.1 → currentHeight = 60*0.1 = 6 < threshold(30)
         coordinator.tickForTesting(fractionOverride: 0.1)
 
         XCTAssertEqual(snapshot.cropCalls, 1)
@@ -201,8 +201,8 @@ final class CellExplosionCoordinatorTests: XCTestCase {
             TestUpdate(action: .delete, indexPath: IndexPath(item: 0, section: 0))
         ])
 
-        // fraction=0.5 → currentHeight = 30 > threshold(12)
-        coordinator.tickForTesting(fractionOverride: 0.5)
+        // fraction=0.6 → currentHeight = 36 > threshold(30)
+        coordinator.tickForTesting(fractionOverride: 0.6)
 
         XCTAssertEqual(snapshot.cropCalls, 0)
         XCTAssertEqual(renderer.receivedBatches.count, 0)

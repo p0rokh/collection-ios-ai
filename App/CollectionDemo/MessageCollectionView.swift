@@ -6,11 +6,18 @@
 //
 
 import UIKit
+import CellExplosionKit
 
-class MessageCollectionView: UICollectionView {
+final class MessageCollectionView: UICollectionView {
 
-    override init(frame: CGRect, collectionViewLayout layout: UICollectionViewLayout) {
-        super.init(frame: frame, collectionViewLayout: layout)
+    private let collapseController: CellCollapseLayoutController
+    private lazy var renderer = SpriteKitParticleRenderer(configuration: .default)
+    private var explosionCoordinator: CellExplosionCoordinator?
+
+    init() {
+        let ctrl = CellCollapseLayoutController(configuration: .default)
+        collapseController = ctrl
+        super.init(frame: .zero, collectionViewLayout: MessageFlowLayout(collapseController: ctrl))
         backgroundColor = nil
         alwaysBounceVertical = true
         transform = CGAffineTransform(scaleX: 1, y: -1)
@@ -19,5 +26,27 @@ class MessageCollectionView: UICollectionView {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    /// Подключает анимацию взрыва к иерархии видов. Вызывать из `viewDidLoad` хост-контроллера.
+    /// `container` — корневой вид контроллера: renderer.view добавляется поверх него,
+    /// чтобы частицы не обрезались границами коллекции.
+    func configure(container: UIView) {
+        explosionCoordinator = CellExplosionCoordinator(
+            collectionView: self,
+            container: container,
+            renderer: renderer,
+            layoutController: collapseController,
+            snapshotProvider: FlippedCellSnapshotProvider(),
+            configuration: .default
+        )
+        container.addSubview(renderer.view)
+        renderer.view.frame = container.bounds
+        renderer.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    }
+
+    /// Удаляет элементы с анимацией взрыва. Data source должен быть обновлён до вызова.
+    func delete(at indexPaths: [IndexPath]) {
+        explosionCoordinator?.performDeletion(at: indexPaths)
     }
 }
