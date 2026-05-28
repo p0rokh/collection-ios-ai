@@ -8,10 +8,9 @@
 import UIKit
 import CellExplosionKit
 
-final class MessageCollectionView: UICollectionView {
+final class MessageCollectionView: ExplosionCollectionView {
 
     private let collapseController: CellCollapseLayoutController
-    private var explosionCoordinator: CellExplosionCoordinator?
 
     init() {
         let ctrl = CellCollapseLayoutController(configuration: .default)
@@ -42,14 +41,5 @@ final class MessageCollectionView: UICollectionView {
         container.addSubview(components.rendererView)
         components.rendererView.frame = container.bounds
         components.rendererView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-    }
-    
-    override func deleteItems(at indexPaths: [IndexPath]) {
-        super.deleteItems(at: indexPaths)
-    }
-
-    /// Удаляет элементы с анимацией взрыва. Data source должен быть обновлён до вызова.
-    func delete(at indexPaths: [IndexPath]) {
-        explosionCoordinator?.performDeletion(at: indexPaths)
     }
 }

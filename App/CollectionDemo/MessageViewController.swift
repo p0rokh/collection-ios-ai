@@ -5,6 +5,7 @@
 
 import UIKit
 import SnapKit
+import CellExplosionKit
 
 final class MessageViewController: UIViewController {
 
@@ -67,7 +68,7 @@ final class MessageViewController: UIViewController {
         for path in indexPaths.sorted(by: { $0.item > $1.item }) {
             dataSource.remove(at: path.item)
         }
-        messageCollectionView.delete(at: indexPaths)
+        messageCollectionView.deleteItems(at: indexPaths)
     }
 }
 
